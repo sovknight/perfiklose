@@ -450,13 +450,13 @@ body {
       <div style="display:flex;gap:.75rem;background:rgba(255,255,255,.03);padding:.875rem;border-radius:14px;border:1px solid rgba(255,255,255,.05);align-items:center;">
         <span style="background:#0058bc;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">3</span>
         <div>
-          <p style="font-weight:600;font-size:.85rem;">Manually Attach ZIP</p>
-          <p style="font-size:.72rem;color:rgba(255,255,255,.5);line-height:1.3;">iOS Gmail drops attachments. Inside the draft, tap the 📎 paperclip and select your ZIP from Downloads.</p>
+          <p style="font-weight:600;font-size:.85rem;">Attach ZIP from 'Recents'</p>
+          <p style="font-size:.72rem;color:rgba(255,255,255,.5);line-height:1.3;">Tap 📎 in your email. If you only see Recents, pull down on the list to expose the <b>Search bar</b> and type `Photos_`, or tap <b>Browse</b> at the bottom.</p>
         </div>
       </div>
     </div>
     
-    <button onclick="executeShare()" class="neon-btn"
+    <button id="share-btn-modal" onclick="executeShare()" class="neon-btn"
             style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;
                    padding:.875rem;border-radius:999px;background:#fff;color:#0058bc;
                    font-weight:700;font-size:.9rem;letter-spacing:.05em;text-transform:uppercase;
@@ -880,6 +880,7 @@ async function shareFolder() {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (isIOS) {
+    $('share-btn-modal').innerHTML = `<span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.25rem;">download</span>Download "${folderName}.zip" & Share`;
     $('share-guide-modal').classList.add('show');
   } else {
     executeShare();
