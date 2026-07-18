@@ -419,6 +419,54 @@ body {
   </button>
 </nav>
 
+<!-- ══ Share Guide Modal ══ -->
+<div class="modal-backdrop" id="share-guide-modal" onclick="if(event.target===this) closeShareGuide()">
+  <div class="modal-panel glass-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <h2 style="font-weight:700;font-size:1.25rem;letter-spacing:.05em;">How to Share on iOS</h2>
+      <button onclick="closeShareGuide()" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">✕</button>
+    </div>
+    
+    <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.75rem;">
+      <!-- Step 1 -->
+      <div style="display:flex;gap:.75rem;background:rgba(255,255,255,.03);padding:.875rem;border-radius:14px;border:1px solid rgba(255,255,255,.05);align-items:center;">
+        <span style="background:#0058bc;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">1</span>
+        <div>
+          <p style="font-weight:600;font-size:.85rem;">Download ZIP Backup</p>
+          <p style="font-size:.72rem;color:rgba(255,255,255,.5);line-height:1.3;">First, we'll download a ZIP backup of all photos to your device.</p>
+        </div>
+      </div>
+      
+      <!-- Step 2 -->
+      <div style="display:flex;gap:.75rem;background:rgba(255,255,255,.03);padding:.875rem;border-radius:14px;border:1px solid rgba(255,255,255,.05);align-items:center;">
+        <span style="background:#0058bc;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">2</span>
+        <div>
+          <p style="font-weight:600;font-size:.85rem;">Choose Your Email App</p>
+          <p style="font-size:.72rem;color:rgba(255,255,255,.5);line-height:1.3;">Tap your email app (like Gmail or Outlook) when the sharing menu opens.</p>
+        </div>
+      </div>
+      
+      <!-- Step 3 -->
+      <div style="display:flex;gap:.75rem;background:rgba(255,255,255,.03);padding:.875rem;border-radius:14px;border:1px solid rgba(255,255,255,.05);align-items:center;">
+        <span style="background:#0058bc;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">3</span>
+        <div>
+          <p style="font-weight:600;font-size:.85rem;">Manually Attach ZIP</p>
+          <p style="font-size:.72rem;color:rgba(255,255,255,.5);line-height:1.3;">iOS Gmail drops attachments. Inside the draft, tap the 📎 paperclip and select your ZIP from Downloads.</p>
+        </div>
+      </div>
+    </div>
+    
+    <button onclick="executeShare()" class="neon-btn"
+            style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;
+                   padding:.875rem;border-radius:999px;background:#fff;color:#0058bc;
+                   font-weight:700;font-size:.9rem;letter-spacing:.05em;text-transform:uppercase;
+                   border:none;cursor:pointer;font-family:inherit;">
+      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.25rem;">download</span>
+      Download &amp; Share
+    </button>
+  </div>
+</div>
+
 <!-- ══ Settings Modal ══ -->
 <div class="modal-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
   <div class="modal-panel glass-card">
@@ -822,22 +870,50 @@ async function triggerDownload(blob, filename) {
 }
 
 // ── Share (Fix #3 + #4) ────────────────────────────────────────────────────
+function closeShareGuide() {
+  $('share-guide-modal').classList.remove('show');
+}
+
 async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (readyPhotos.length === 0) { toast('No compressed photos ready yet', 'err'); return; }
 
-  // Fix #3: Clear prompt with storage cleanup reminder
-  const saveFirst = confirm(
-    'Save a ZIP backup to your phone before sharing?\n\n' +
-    'Tip: Your Downloads folder keeps this file until you manually delete it. ' +
-    'Remember to clear old batches from your Files app periodically.'
-  );
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  if (isIOS) {
+    $('share-guide-modal').classList.add('show');
+  } else {
+    executeShare();
+  }
+}
+
+async function executeShare() {
+  closeShareGuide();
+  const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  
   let zipBlob;
-  if (saveFirst) {
+  let downloadedZip = false;
+
+  // iOS force-downloads ZIP since we explained it in the guide modal.
+  if (isIOS) {
     toast('Creating ZIP…');
     zipBlob = await makeZip();
     await triggerDownload(zipBlob, folderName + '.zip');
-    toast('Saved to Downloads!', 'ok');
+    downloadedZip = true;
+    toast('ZIP Saved to Downloads!', 'ok');
+    await new Promise(res => setTimeout(res, 800)); // small delay for download trigger
+  } else {
+    const saveFirst = confirm(
+      'Save a ZIP backup to your phone before sharing?\n\n' +
+      'Tip: Your Downloads folder keeps this file until you manually delete it.'
+    );
+    if (saveFirst) {
+      toast('Creating ZIP…');
+      zipBlob = await makeZip();
+      await triggerDownload(zipBlob, folderName + '.zip');
+      downloadedZip = true;
+      toast('Saved to Downloads!', 'ok');
+    }
   }
 
   toast('Packaging…');
@@ -847,18 +923,21 @@ async function shareFolder() {
     if (navigator.canShare && navigator.canShare({ files: filesToShare })) {
       await navigator.share({ files: filesToShare, title: 'PerfiKlose — ' + folderName });
       toast('Shared!', 'ok');
-      // Fix #4: Gmail silently drops attachments — inform user
-      setTimeout(() => {
-        alert(
-          'Photos sent to your email app!\n\n' +
-          'If you use Gmail and the photos did not appear as attachments, ' +
-          'open your Files/Downloads folder and attach ' + folderName + '.zip manually.'
-        );
+      if (isIOS) {
+        setTimeout(() => {
+          alert(
+            'Sharing completed!\n\n' +
+            'Note: If your email client (like Gmail) did not automatically attach the photos, ' +
+            'tap the 📎 (paperclip) icon in your email app and select ' + folderName + '.zip from your Downloads.'
+          );
+          promptClear();
+        }, 600);
+      } else {
         promptClear();
-      }, 600);
+      }
     } else {
       // Fallback: download ZIP + open mailto
-      if (!saveFirst) {
+      if (!downloadedZip) {
         toast('Creating ZIP…');
         zipBlob = await makeZip();
         await triggerDownload(zipBlob, folderName + '.zip');
