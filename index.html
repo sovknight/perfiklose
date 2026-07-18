@@ -823,57 +823,44 @@ async function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(u), 15_000);
 }
 
-// ── Share — Simple & Reliable ──────────────────────────────────────────────
+// ── Share — ZIP Only ───────────────────────────────────────────────────────
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
-  // Show iOS-only tip before sharing (only once per session)
+  // iOS-only tip (once per session)
   if (isIOS && !shareFolder._tipped) {
     shareFolder._tipped = true;
     alert(
       '📧 iPhone Sharing Tip\n\n' +
-      'Outlook and Gmail do NOT reliably attach files on iPhone.\n\n' +
-      'When the share menu appears:\n' +
-      '• Scroll the icons and look for Apple "Mail" (not your default)\n' +
-      '• Or use Messages, AirDrop, or "Save to Files"\n\n' +
-      'If you must use Outlook, tap "Save to Files" first, then open Outlook and attach the file manually.'
+      'Your photos will be saved as a ZIP file.\n\n' +
+      'To email them:\n' +
+      '1. Tap "Save to Files" or let it download\n' +
+      '2. Open your email app\n' +
+      '3. Tap the 📎 paperclip and look in Recents or Downloads'
     );
   }
 
-  toast('Packaging…');
+  toast('Creating ZIP…');
   const zipBlob = await makeZip();
+  const zipFile = new File([zipBlob], folderName + '.zip', { type: 'application/zip' });
 
-  // Try native share if the browser supports it
+  // Try native share
   if (navigator.share) {
     try {
-      // Attempt 1: share individual images (best for email apps)
-      const imgFiles = readyPhotos.map(p => new File([p.comp], p.name, { type: 'image/jpeg' }));
-      await navigator.share({ files: imgFiles, title: folderName });
-      toast('Shared!', 'ok');
-      promptClear();
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      console.warn('Image share unsupported, trying ZIP…', e.message);
-    }
-
-    try {
-      // Attempt 2: share as a single ZIP
-      const zipFile = new File([zipBlob], folderName + '.zip', { type: 'application/zip' });
       await navigator.share({ files: [zipFile], title: folderName });
       toast('Shared!', 'ok');
       promptClear();
       return;
     } catch (e) {
       if (e.name === 'AbortError') return;
-      console.warn('ZIP share unsupported, downloading…', e.message);
+      console.warn('Share failed, downloading instead…', e.message);
     }
   }
 
-  // Final fallback: just download the ZIP
+  // Fallback: download the ZIP directly
   await triggerDownload(zipBlob, folderName + '.zip');
   toast('ZIP saved to Downloads!', 'ok');
   promptClear();
