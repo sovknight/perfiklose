@@ -397,35 +397,34 @@ body {
 
 </div>
 
-<!-- ══ Bottom Navigation ══ -->
-<nav style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
+<!-- ══ Bottom Navigation (Floating) ══ -->
+<nav style="position:fixed;bottom:1.5rem;left:0;width:100%;z-index:50;
             display:flex;justify-content:center;align-items:center;
-            gap:1rem;
-            padding:.875rem 1.25rem;padding-bottom:calc(.875rem + var(--safe));
-            background:rgba(0,0,0,.72);
-            backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-            border-top:1px solid rgba(255,255,255,.08);">
-  <button id="saveBtn" onclick="saveZipFlow()"
-          style="display:flex;align-items:center;gap:.5rem;
-                 padding:.65rem 2rem;border-radius:999px;
+            gap:.875rem;
+            padding:0 1.25rem;
+            pointer-events:none;">
+  <button id="saveBtn" onclick="saveZipFlow()" class="neon-btn"
+          style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                 padding:.875rem 0;border-radius:999px;
                  background:#fff;color:#0058bc;
-                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
+                 font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
                  border:none;cursor:pointer;font-family:inherit;
-                 transition:opacity .2s,transform .1s,background-color .2s;
-                 box-shadow:0 0 16px rgba(255,255,255,.18),0 4px 20px rgba(0,0,0,.4);">
-    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.2rem;">download</span>
-    1. Save ZIP
+                 flex:1;max-width:280px;
+                 transition:opacity .2s,transform .1s,background-color .2s;">
+    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.35rem;">download</span>
+    Save ZIP
   </button>
   <button id="emailBtn" onclick="emailZipFlow()" disabled
-          style="display:flex;align-items:center;gap:.5rem;
-                 padding:.65rem 2rem;border-radius:999px;
+          style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                 padding:.875rem 0;border-radius:999px;
                  background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);
-                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
+                 font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
                  border:1px solid rgba(255,255,255,0.15);cursor:not-allowed;font-family:inherit;
+                 flex:1;max-width:280px;
                  transition:opacity .2s,transform .1s,background-color .2s,color .2s,border-color .2s;
-                 box-shadow:none;opacity:0.38;">
-    <span class="material-symbols-outlined" style="font-size:1.2rem;">mail</span>
-    2. Email ZIP
+                 opacity:0.38;">
+    <span class="material-symbols-outlined" style="font-size:1.35rem;">mail</span>
+    Email ZIP
   </button>
 </nav>
 
@@ -827,23 +826,30 @@ function render() {
   $('saveBtn').disabled = !canSave;
   $('saveBtn').style.opacity = canSave ? '1' : '0.38';
   $('saveBtn').style.cursor = canSave ? 'pointer' : 'not-allowed';
+  if (canSave) {
+    $('saveBtn').classList.add('neon-btn');
+  } else {
+    $('saveBtn').classList.remove('neon-btn');
+    $('saveBtn').style.transform = 'scale(1)';
+  }
 
   const canEmail = zipSaved && canSave;
   $('emailBtn').disabled = !canEmail;
   if (canEmail) {
+    $('emailBtn').classList.add('neon-btn');
     $('emailBtn').style.background = '#0058bc';
     $('emailBtn').style.color = '#fff';
-    $('emailBtn').style.borderColor = '#0058bc';
+    $('emailBtn').style.borderColor = 'transparent';
     $('emailBtn').style.opacity = '1';
     $('emailBtn').style.cursor = 'pointer';
-    $('emailBtn').style.boxShadow = '0 0 16px rgba(0,88,188,.4),0 4px 15px rgba(0,0,0,.4)';
   } else {
+    $('emailBtn').classList.remove('neon-btn');
     $('emailBtn').style.background = 'rgba(255,255,255,0.1)';
     $('emailBtn').style.color = 'rgba(255,255,255,0.4)';
     $('emailBtn').style.borderColor = 'rgba(255,255,255,0.15)';
     $('emailBtn').style.opacity = '0.38';
     $('emailBtn').style.cursor = 'not-allowed';
-    $('emailBtn').style.boxShadow = 'none';
+    $('emailBtn').style.transform = 'scale(1)';
   }
 }
 
