@@ -878,7 +878,7 @@ async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (readyPhotos.length === 0) { toast('No compressed photos ready yet', 'err'); return; }
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (isIOS) {
     $('share-guide-modal').classList.add('show');
   } else {
@@ -889,7 +889,7 @@ async function shareFolder() {
 async function executeShare() {
   closeShareGuide();
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   
   let zipBlob;
   let downloadedZip = false;
