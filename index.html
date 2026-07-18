@@ -834,9 +834,12 @@ async function shareFolder() {
   if (isIOS && !shareFolder._tipped) {
     shareFolder._tipped = true;
     alert(
-      '📧 iPhone Tip\n\n' +
-      'When the share menu appears, select the blue "Mail" icon (Apple Mail).\n\n' +
-      'Outlook and Gmail on iPhone do not reliably attach files from web apps.'
+      '📧 iPhone Sharing Tip\n\n' +
+      'Outlook and Gmail do NOT reliably attach files on iPhone.\n\n' +
+      'When the share menu appears:\n' +
+      '• Scroll the icons and look for Apple "Mail" (not your default)\n' +
+      '• Or use Messages, AirDrop, or "Save to Files"\n\n' +
+      'If you must use Outlook, tap "Save to Files" first, then open Outlook and attach the file manually.'
     );
   }
 
