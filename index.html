@@ -400,20 +400,32 @@ body {
 <!-- ══ Bottom Navigation ══ -->
 <nav style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
             display:flex;justify-content:center;align-items:center;
+            gap:1rem;
             padding:.875rem 1.25rem;padding-bottom:calc(.875rem + var(--safe));
             background:rgba(0,0,0,.72);
             backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
             border-top:1px solid rgba(255,255,255,.08);">
-  <button id="sbtn" onclick="shareFolder()"
+  <button id="saveBtn" onclick="saveZipFlow()"
           style="display:flex;align-items:center;gap:.5rem;
-                 padding:.65rem 3rem;border-radius:999px;
+                 padding:.65rem 2rem;border-radius:999px;
                  background:#fff;color:#0058bc;
-                 font-weight:700;font-size:.875rem;letter-spacing:.1em;text-transform:uppercase;
+                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
                  border:none;cursor:pointer;font-family:inherit;
-                 transition:opacity .2s,transform .1s;
-                 box-shadow:0 0 24px rgba(255,255,255,.18),0 4px 20px rgba(0,0,0,.4);">
-    <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.2rem;">send</span>
-    Share
+                 transition:opacity .2s,transform .1s,background-color .2s;
+                 box-shadow:0 0 16px rgba(255,255,255,.18),0 4px 20px rgba(0,0,0,.4);">
+    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.2rem;">download</span>
+    1. Save ZIP
+  </button>
+  <button id="emailBtn" onclick="emailZipFlow()" disabled
+          style="display:flex;align-items:center;gap:.5rem;
+                 padding:.65rem 2rem;border-radius:999px;
+                 background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);
+                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
+                 border:1px solid rgba(255,255,255,0.15);cursor:not-allowed;font-family:inherit;
+                 transition:opacity .2s,transform .1s,background-color .2s,color .2s,border-color .2s;
+                 box-shadow:none;opacity:0.38;">
+    <span class="material-symbols-outlined" style="font-size:1.2rem;">mail</span>
+    2. Email ZIP
   </button>
 </nav>
 
@@ -470,10 +482,11 @@ const MAX_PIXELS = 25_000_000;    // ~25 MP heap-crash prevention threshold
 const STALE_DAYS = 5;             // days before stale batch warning fires
 
 // ── State ──────────────────────────────────────────────────────────────────
-let photos  = [];   // Array of photo objects
-let queue   = [];   // Pending compression jobs
-let busy    = false;
-let swReg   = null; // Service worker registration handle
+let photos   = [];   // Array of photo objects
+let queue    = [];   // Pending compression jobs
+let busy     = false;
+let zipSaved = false; // Tracks if the current batch has been saved
+let swReg    = null; // Service worker registration handle
 const $ = id => document.getElementById(id);
 
 // ── Glow Orb Parallax (throttled with rAF) ────────────────────────────────
@@ -623,6 +636,7 @@ function handleFiles(e) {
     photos.push(p);
     queue.push(p);
   });
+  zipSaved = false;
   render();
   runQueue();
 }
@@ -683,6 +697,7 @@ function compress(p) {
           p.status = 'ok';
           p.blob   = null; // release original file reference
           dbSave(p);
+          zipSaved = false;
           render();
           resolve();
         }, 'image/jpeg', Q);
@@ -700,6 +715,7 @@ window.del = id => {
     if (photos[i].url) URL.revokeObjectURL(photos[i].url);
     photos.splice(i, 1);
     dbDelete(id);
+    zipSaved = false;
     render();
   }
 };
@@ -707,6 +723,7 @@ window.del = id => {
 window.clearAll = () => {
   photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
   photos = []; queue = []; busy = false;
+  zipSaved = false;
   $('stale-banner').classList.remove('show');
   dbClear();
   newFolder();
@@ -805,10 +822,29 @@ function render() {
   $('hero-progress').style.width = Math.min(savePct, 100) + '%';
   $('hero-recovery').textContent = savePct + '% Recovery';
 
-  // ── Share button: enabled when at least one photo is ready AND none are still queued ──
-  const canShare = anyReady && !anyQueued;
-  $('sbtn').disabled      = !canShare;
-  $('sbtn').style.opacity = canShare ? '1' : '0.38';
+  // ── Buttons state ──
+  const canSave = anyReady && !anyQueued;
+  $('saveBtn').disabled = !canSave;
+  $('saveBtn').style.opacity = canSave ? '1' : '0.38';
+  $('saveBtn').style.cursor = canSave ? 'pointer' : 'not-allowed';
+
+  const canEmail = zipSaved && canSave;
+  $('emailBtn').disabled = !canEmail;
+  if (canEmail) {
+    $('emailBtn').style.background = '#0058bc';
+    $('emailBtn').style.color = '#fff';
+    $('emailBtn').style.borderColor = '#0058bc';
+    $('emailBtn').style.opacity = '1';
+    $('emailBtn').style.cursor = 'pointer';
+    $('emailBtn').style.boxShadow = '0 0 16px rgba(0,88,188,.4),0 4px 15px rgba(0,0,0,.4)';
+  } else {
+    $('emailBtn').style.background = 'rgba(255,255,255,0.1)';
+    $('emailBtn').style.color = 'rgba(255,255,255,0.4)';
+    $('emailBtn').style.borderColor = 'rgba(255,255,255,0.15)';
+    $('emailBtn').style.opacity = '0.38';
+    $('emailBtn').style.cursor = 'not-allowed';
+    $('emailBtn').style.boxShadow = 'none';
+  }
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -848,15 +884,26 @@ async function triggerDownload(blob, filename) {
 // ── Share — ZIP Only ───────────────────────────────────────────────────────
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-async function shareFolder() {
+let zipBlobCache = null; // Cache to pass generated ZIP data from Step 1 to Step 2
+
+async function saveZipFlow() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
   toast('Packaging ZIP…');
-  const zipBlob = await makeZip();
-  const zipFile = new File([zipBlob], folderName + '.zip', { type: 'application/zip' });
+  zipBlobCache = await makeZip();
 
-  // Common mailto link for manual attachment fallbacks
+  toast('Downloading ZIP…');
+  await triggerDownload(zipBlobCache, folderName + '.zip');
+
+  zipSaved = true;
+  render();
+  toast('ZIP saved! Now tap "2. Email ZIP"', 'ok');
+}
+
+async function emailZipFlow() {
+  if (!zipSaved || !zipBlobCache) { toast('Please save the ZIP first', 'err'); return; }
+
   const mailToUrl =
     'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
     '&body=' + encodeURIComponent(
@@ -866,50 +913,17 @@ async function shareFolder() {
       'Sent via PerfiKlose.'
     );
 
-  if (isIOS) {
-    // Apple (iOS) Path: Download ZIP, show alert, open mailto
-    toast('Downloading ZIP…');
-    await triggerDownload(zipBlob, folderName + '.zip');
-    toast('Opening email client…', 'ok');
-    
-    setTimeout(() => {
-      alert(
-        '📧 iPhone Sharing Tip\n\n' +
-        'Your photos are saved as a ZIP file.\n\n' +
-        'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
-      );
-      window.location.href = mailToUrl;
-      promptClear();
-    }, 100);
+  toast('Opening email client…', 'ok');
 
-  } else {
-    // Android Path: Download ZIP, then try native share for auto-attachment
-    toast('Downloading ZIP…');
-    await triggerDownload(zipBlob, folderName + '.zip');
+  const platformTip = isIOS
+    ? '📧 iPhone Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
+    : '📧 Android Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.';
 
-    try {
-      if (navigator.share) {
-        await navigator.share({ files: [zipFile], title: folderName });
-        toast('Shared!', 'ok');
-        promptClear();
-      } else {
-        throw new Error('Web Share API not available');
-      }
-    } catch (e) {
-      if (e.name === 'AbortError') return; // User cancelled the share menu
-
-      // Fallback if Android Chrome blocks sharing ZIPs
-      setTimeout(() => {
-        alert(
-          '📧 Android Sharing Tip\n\n' +
-          'Your photos are saved as a ZIP file.\n\n' +
-          'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.'
-        );
-        window.location.href = mailToUrl;
-        promptClear();
-      }, 100);
-    }
-  }
+  setTimeout(() => {
+    alert(platformTip);
+    window.location.href = mailToUrl;
+    promptClear();
+  }, 100);
 }
 
 function promptClear() {
