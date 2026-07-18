@@ -824,9 +824,21 @@ async function triggerDownload(blob, filename) {
 }
 
 // ── Share — Simple & Reliable ──────────────────────────────────────────────
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
+
+  // Show iOS-only tip before sharing (only once per session)
+  if (isIOS && !shareFolder._tipped) {
+    shareFolder._tipped = true;
+    alert(
+      '📧 iPhone Tip\n\n' +
+      'When the share menu appears, select the blue "Mail" icon (Apple Mail).\n\n' +
+      'Outlook and Gmail on iPhone do not reliably attach files from web apps.'
+    );
+  }
 
   toast('Packaging…');
   const zipBlob = await makeZip();
@@ -841,7 +853,7 @@ async function shareFolder() {
       promptClear();
       return;
     } catch (e) {
-      if (e.name === 'AbortError') return; // user cancelled — do nothing
+      if (e.name === 'AbortError') return;
       console.warn('Image share unsupported, trying ZIP…', e.message);
     }
 
