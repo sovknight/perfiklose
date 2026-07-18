@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PerfiKlose — Compress &amp; Share</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Snap, compress &amp; share photos effortlessly. Zero install.">
+<link rel="manifest" href="manifest.json">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" rel="stylesheet">
+
+<!-- JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      colors: { primary: '#0058bc' },
+      fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+    }}
+  };
+</script>
+
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root { --safe: env(safe-area-inset-bottom, 0px); }
+html { height: -webkit-fill-available; }
+body {
+  background: #000;
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+}
+
+/* ── Keyframes ────────────────────────────────────────────────────────── */
+@keyframes pop        { from { transform:scale(.9);  opacity:0 } to { transform:scale(1); opacity:1 } }
+@keyframes sp         { to   { transform:rotate(360deg) } }
+@keyframes spin-cw    { to   { transform:rotate(360deg)  } }
+@keyframes spin-ccw   { to   { transform:rotate(-360deg) } }
+@keyframes pulse-ring { 0%,100%{box-shadow:0 0 20px rgba(0,88,188,.4)} 50%{box-shadow:0 0 50px rgba(0,88,188,.9)} }
+@keyframes float-up   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+/* ── Material Symbols filled variant ─────────────────────────────────── */
+.filled { font-variation-settings: 'FILL' 1; }
+
+/* ── Glow Orb ─────────────────────────────────────────────────────────── */
+.glow-orb {
+  position: fixed;
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(0,88,188,.32) 0%, rgba(0,64,160,.12) 45%, transparent 70%);
+  border-radius: 50%;
+  top: -320px; left: 50%; transform: translateX(-50%);
+  pointer-events: none; z-index: 0;
+  filter: blur(20px);
+  transition: transform .08s linear;
+}
+
+/* ── Glassmorphism Card ───────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+/* ── Hero Primary Card ────────────────────────────────────────────────── */
+.hero-card {
+  background: linear-gradient(135deg, #004294 0%, #002e7a 100%);
+  box-shadow:
+    0 4px 20px rgba(0,88,188,0.25),
+    inset 0 1px 0 rgba(255,255,255,.15);
+}
+
+/* ── Metallic Title ───────────────────────────────────────────────────── */
+.silver-metallic {
+  background: linear-gradient(180deg, #fff 0%, #b0c8e8 38%, #fff 58%, #6a8eb0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Neon Button ──────────────────────────────────────────────────────── */
+.neon-btn {
+  box-shadow: 0 0 22px rgba(255,255,255,.28), 0 0 44px rgba(0,88,188,.25), 0 4px 16px rgba(0,0,0,.35);
+  transition: box-shadow .2s, transform .1s;
+}
+.neon-btn:hover  { box-shadow: 0 0 32px rgba(255,255,255,.38), 0 0 64px rgba(0,88,188,.35), 0 4px 20px rgba(0,0,0,.45); }
+.neon-btn:active { transform: scale(.96); box-shadow: 0 0 14px rgba(255,255,255,.2); }
+
+/* ── Spinning Dashed Rings ────────────────────────────────────────────── */
+.ring-cw  { animation: spin-cw  14s linear infinite; }
+.ring-ccw { animation: spin-ccw 20s linear infinite; }
+
+/* ── Camera icon float ────────────────────────────────────────────────── */
+.float-anim { animation: float-up 3.5s ease-in-out infinite; }
+
+/* ── Photo Grid ───────────────────────────────────────────────────────── */
+#grid {
+  display: none;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: .6rem;
+  padding: .875rem;
+}
+
+/* ── Photo Card ───────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  background: rgba(255,255,255,.06);
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  animation: pop .2s ease-out;
+  border: 1px solid rgba(255,255,255,.1);
+}
+.card img { width:100%; height:100%; object-fit:cover; display:block; }
+.card.loading img { filter: blur(5px) brightness(.3); }
+.card .spin {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:.25rem; color:#fff; font-size:.6rem;
+}
+.spinner {
+  width:22px; height:22px;
+  border:2.5px solid rgba(255,255,255,.12);
+  border-top-color:#93c5fd;
+  border-radius:50%;
+  animation: sp .75s linear infinite;
+}
+.card .del {
+  position:absolute; top:.35rem; right:.35rem;
+  width:20px; height:20px; border-radius:50%;
+  background:rgba(0,0,0,.72); border:none; color:#fff;
+  font-size:.68rem;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:2;
+  transition: background .15s;
+}
+.card .del:hover { background: rgba(186,26,26,.85); }
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+.toast {
+  position:fixed; bottom:7.5rem; left:50%;
+  transform: translateX(-50%) translateY(120px);
+  background: rgba(30,30,35,.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color:#f4eff4;
+  padding:.7rem 1.25rem; border-radius:12px;
+  font-size:.875rem; font-weight:500;
+  z-index:2000;
+  opacity:0; pointer-events:none;
+  box-shadow:0 4px 24px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
+  transition:transform .25s ease-out, opacity .25s;
+  white-space:nowrap;
+}
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.toast.ok   { background:rgba(0,68,22,.95);  color:#a7f3c0; }
+.toast.err  { background:rgba(110,20,15,.95); color:#fecdd3; }
+
+/* ── System Banners ───────────────────────────────────────────────────── */
+.banner {
+  display:none; align-items:center; gap:.6rem;
+  padding:.6rem 1rem; font-size:.8rem; font-weight:500;
+  margin:.5rem 1rem 0; border-radius:12px;
+  animation: pop .3s ease-out; position:relative; z-index:60;
+}
+.banner.show { display:flex; }
+.banner-warn { background:rgba(60,45,0,.92); color:#fde68a; border:1px solid rgba(100,78,0,.7); }
+.banner-info { background:rgba(0,40,58,.92); color:#bae6fd; border:1px solid rgba(0,75,100,.7); }
+.banner-icon { font-size:.95rem; flex-shrink:0; }
+.banner-close { margin-left:auto; background:none; border:none; color:inherit; font-size:.85rem; cursor:pointer; opacity:.6; padding:.1rem .25rem; }
+.banner-close:hover { opacity:1; }
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px); z-index:2500; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.modal-backdrop.show { opacity:1; pointer-events:auto; }
+.modal-panel {
+  position:absolute; bottom:0; left:0; width:100%; max-height:85vh; overflow-y:auto;
+  border-radius:28px 28px 0 0; padding:1.75rem 1.25rem calc(1.75rem + var(--safe));
+  transform:translateY(100%); transition:transform .35s cubic-bezier(.4,0,.2,1);
+}
+.modal-backdrop.show .modal-panel { transform:translateY(0); }
+</style>
+</head>
+
+<body>
+
+<!-- ══ Glow Orb ══ -->
+<div class="glow-orb" id="glow-orb"></div>
+
+<!-- ══ System Banners ══ -->
+<div class="banner banner-info" id="update-banner">
+  <span class="banner-icon">🔄</span>
+  <span>A new version of PerfiKlose is ready.</span>
+  <button onclick="applyUpdate()" style="margin-left:.4rem;background:rgba(255,255,255,.15);border:none;color:inherit;padding:.2rem .65rem;border-radius:20px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;">Update</button>
+  <button class="banner-close" aria-label="Dismiss" onclick="this.parentElement.classList.remove('show')">✕</button>
+</div>
+<div class="banner banner-warn" id="stale-banner">
+  <span class="banner-icon">⏰</span>
+  <span id="stale-msg"></span>
+  <button class="banner-close" aria-label="Dismiss" onclick="this.parentElement.classList.remove('show')">✕</button>
+</div>
+<div class="banner banner-warn" id="lock-banner">
+  <span class="banner-icon">📵</span>
+  <span>Keep screen on! Compressing photos…</span>
+  <button class="banner-close" aria-label="Dismiss" onclick="this.parentElement.classList.remove('show')">✕</button>
+</div>
+
+<!-- ══ Top App Bar ══ -->
+<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-5 h-16"
+        style="background:rgba(0,0,0,.35);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.07);">
+  <div class="flex items-center gap-2.5">
+    <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.625rem;">camera</span>
+    <h1 class="silver-metallic font-bold uppercase tracking-tighter" style="font-size:1.25rem;letter-spacing:-.02em;">PerfiKlose</h1>
+  </div>
+  <button onclick="showSettings()"
+          class="glass-card flex items-center justify-center rounded-full active:scale-90 transition-transform"
+          style="width:40px;height:40px;">
+    <span class="material-symbols-outlined" style="color:rgba(255,255,255,.8);font-size:1.15rem;">settings</span>
+  </button>
+</header>
+
+<!-- ══ Main Content ══ -->
+<main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:210px;display:flex;flex-direction:column;gap:1.25rem;">
+
+  <!-- ── Hero Stats Card ── -->
+  <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.75rem 1rem .6rem;">
+    <!-- Decorative blob -->
+    <div style="position:absolute;right:-24px;top:-24px;width:120px;height:120px;background:rgba(255,255,255,.08);border-radius:50%;filter:blur(30px);pointer-events:none;"></div>
+
+    <div style="position:relative;z-index:1;">
+      <!-- Stats Row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+        <div>
+          <p style="color:rgba(255,255,255,.6);font-size:.55rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.1rem;">Total Size</p>
+          <div style="display:flex;align-items:baseline;gap:.15rem;">
+            <span id="hero-num"
+                  style="font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:700;font-size:1.85rem;color:#fff;line-height:1;">
+              0
+            </span>
+            <span id="hero-unit" style="font-weight:700;font-size:.75rem;color:rgba(255,255,255,.8);">B</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.75rem;border-left:1px solid rgba(255,255,255,.15);padding-left:.75rem;">
+          <div style="text-align:center;">
+            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Ratio</p>
+            <p id="hero-ratio" style="color:#fff;font-weight:700;font-size:.8rem;white-space:nowrap;">—</p>
+          </div>
+          <div style="text-align:center;">
+            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Quality</p>
+            <p id="hero-quality" style="color:#fff;font-weight:700;font-size:.8rem;">60%</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div style="margin-top:.45rem;height:6px;width:100%;background:rgba(0,0,0,.3);border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
+        <div id="hero-progress"
+             style="height:100%;width:0%;border-radius:999px;transition:width .55s cubic-bezier(.4,0,.2,1);
+                    background:linear-gradient(90deg,#fff 0%,#00d4ff 100%);
+                    box-shadow:0 0 8px rgba(0,212,255,.55);">
+        </div>
+      </div>
+
+      <!-- Footer Labels -->
+      <div style="display:flex;justify-content:space-between;margin-top:.25rem;padding:0 .05rem;">
+        <span style="color:rgba(255,255,255,.6);font-weight:700;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;">Optimized</span>
+        <span id="hero-recovery" style="color:#fff;font-weight:700;font-size:.55rem;">0% Recovery</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Processing Queue ── -->
+  <section>
+    <!-- Queue Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem;padding:0 .125rem;">
+      <h2 style="font-weight:700;font-size:1.05rem;letter-spacing:.09em;text-transform:uppercase;color:#fff;">Processing Queue</h2>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span id="cnt"
+              style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
+                     padding:.2rem .75rem;border-radius:999px;font-weight:700;font-size:.68rem;color:#fff;">
+          0 Items
+        </span>
+        <button id="clr" onclick="clearAll()"
+                style="display:none;align-items:center;gap:.25rem;
+                       background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);
+                       color:#fca5a5;padding:.2rem .65rem;border-radius:999px;
+                       font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;">
+          ✕ Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Glass Queue Card -->
+    <div class="glass-card" style="border-radius:24px;min-height:340px;display:flex;flex-direction:column;overflow:hidden;">
+
+      <!-- Empty State -->
+      <div id="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:2.5rem 1.5rem;text-align:center;gap:1.25rem;">
+
+        <!-- Animated rings + camera icon -->
+        <div style="position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center;">
+          <!-- Outer ring -->
+          <div class="ring-cw"
+               style="position:absolute;inset:0;border-radius:50%;
+                      border:2.5px dashed rgba(0,88,188,.38);">
+          </div>
+          <!-- Middle ring -->
+          <div class="ring-ccw"
+               style="position:absolute;inset:14px;border-radius:50%;
+                      border:2px dashed rgba(0,88,188,.2);">
+          </div>
+          <!-- Inner circle + icon -->
+          <div class="float-anim"
+               style="position:relative;width:98px;height:98px;
+                      background:rgba(255,255,255,.05);
+                      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+                      border-radius:50%;border:3px solid rgba(0,100,220,.65);
+                      display:flex;align-items:center;justify-content:center;
+                      animation:float-up 3.5s ease-in-out infinite,pulse-ring 3s ease-in-out infinite;">
+            <span class="material-symbols-outlined filled"
+                  style="color:#4d9fff;font-size:3rem;">photo_camera</span>
+            <!-- ZIP Badge -->
+            <div style="position:absolute;bottom:-5px;right:-12px;
+                        background:#fff;border-radius:10px;padding:.2rem .3rem;
+                        border:2px solid rgba(0,88,188,.5);
+                        box-shadow:0 2px 10px rgba(0,0,0,.5);
+                        transform:rotate(8deg);">
+              <span class="material-symbols-outlined"
+                    style="color:#0058bc;font-size:1.05rem;display:block;line-height:1;">
+                gif_box
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text -->
+        <div>
+          <h3 style="color:#fff;font-weight:700;font-size:1.2rem;letter-spacing:.1em;text-transform:uppercase;">
+            Queue Empty
+          </h3>
+        </div>
+      </div>
+
+      <!-- Photo Grid (injected by render()) -->
+      <div id="grid"></div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ══ Floating Action Buttons ══ -->
+<div style="position:fixed;bottom:5.75rem;left:0;width:100%;display:flex;justify-content:center;align-items:center;gap:.875rem;padding:0 1.25rem;z-index:40;pointer-events:none;">
+
+  <!-- Take Photo pill -->
+  <label for="cam" class="neon-btn"
+         style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                padding:.875rem 2rem;border-radius:999px;
+                background:#fff;color:#0058bc;
+                font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
+                cursor:pointer;flex:1;max-width:280px;">
+    <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.35rem;">camera</span>
+    Take Photo
+    <input type="file" id="cam" accept="image/*" capture="environment" style="display:none;">
+  </label>
+
+  <!-- Gallery circle -->
+  <label for="gal" class="glass-card"
+         style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
+                width:54px;height:54px;border-radius:50%;
+                cursor:pointer;flex-shrink:0;
+                border:2px solid rgba(255,255,255,.28);
+                transition:transform .1s;
+                box-shadow:0 4px 20px rgba(0,0,0,.35);"
+         onmouseenter="this.style.transform='scale(1.07)'"
+         onmouseleave="this.style.transform='scale(1)'"
+         onmousedown="this.style.transform='scale(.95)'"
+         onmouseup="this.style.transform='scale(1)'">
+    <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.25rem;">grid_view</span>
+    <input type="file" id="gal" accept="image/*" multiple style="display:none;">
+  </label>
+
+</div>
+
+<!-- ══ Bottom Navigation ══ -->
+<nav style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
+            display:flex;justify-content:center;align-items:center;
+            padding:.875rem 1.25rem;padding-bottom:calc(.875rem + var(--safe));
+            background:rgba(0,0,0,.72);
+            backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+            border-top:1px solid rgba(255,255,255,.08);">
+  <button id="sbtn" onclick="shareFolder()"
+          style="display:flex;align-items:center;gap:.5rem;
+                 padding:.65rem 3rem;border-radius:999px;
+                 background:#fff;color:#0058bc;
+                 font-weight:700;font-size:.875rem;letter-spacing:.1em;text-transform:uppercase;
+                 border:none;cursor:pointer;font-family:inherit;
+                 transition:opacity .2s,transform .1s;
+                 box-shadow:0 0 24px rgba(255,255,255,.18),0 4px 20px rgba(0,0,0,.4);">
+    <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.2rem;">send</span>
+    Share
+  </button>
+</nav>
+
+<!-- ══ Settings Modal ══ -->
+<div class="modal-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
+  <div class="modal-panel glass-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.75rem;">
+      <h2 style="font-weight:700;font-size:1.35rem;letter-spacing:.05em;">Settings</h2>
+      <button onclick="closeSettings()" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">✕</button>
+    </div>
+    
+    <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;">
+        <label for="q-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">JPEG Quality</label>
+        <span id="q-val" style="color:#4d9fff;font-weight:700;">60%</span>
+      </div>
+      <input type="range" id="q-slider" min="0.1" max="1.0" step="0.1" value="0.6" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Lower quality gives smaller file sizes. 60-80% is recommended for receipts and documents.</p>
+    </div>
+    
+    <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;">
+        <label for="max-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">Max Resolution</label>
+        <span id="max-val" style="color:#4d9fff;font-weight:700;">1280px</span>
+      </div>
+      <input type="range" id="max-slider" min="600" max="3000" step="100" value="1280" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Reduces image dimensions before compression. Prevents massive file sizes from high-MP cameras.</p>
+    </div>
+
+    <!-- About Section -->
+    <div style="background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:.75rem;">
+      <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.5rem;">info</span>
+      <div>
+        <p style="font-weight:600;font-size:.85rem;color:rgba(255,255,255,.95);">About PerfiKlose v1.0</p>
+        <p style="font-size:.75rem;color:rgba(255,255,255,.55);line-height:1.4;">Written by Nic Bradbury &copy; 2026</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Toast ══ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ Application Script ══ -->
+<script>
+'use strict';
+
+// ── Settings & Constants ───────────────────────────────────────────────────
+let Q          = parseFloat(localStorage.getItem('perfiKlose_q')) || 0.6;
+let MAX        = parseInt(localStorage.getItem('perfiKlose_max'), 10) || 1280;
+const MAX_PIXELS = 25_000_000;    // ~25 MP heap-crash prevention threshold
+const STALE_DAYS = 5;             // days before stale batch warning fires
+
+// ── State ──────────────────────────────────────────────────────────────────
+let photos  = [];   // Array of photo objects
+let queue   = [];   // Pending compression jobs
+let busy    = false;
+let swReg   = null; // Service worker registration handle
+const $ = id => document.getElementById(id);
+
+// ── Glow Orb Parallax ─────────────────────────────────────────────────────
+window.addEventListener('mousemove', e => {
+  const orb = $('glow-orb');
+  if (!orb) return;
+  const x = (window.innerWidth  / 2 - e.pageX) / 28;
+  const y = (window.innerHeight / 2 - e.pageY) / 28;
+  orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
+}, { passive: true });
+
+// ── IndexedDB — singleton cached connection ────────────────────────────────
+const DB_NAME = 'PerfiKloseDB';
+const STORE   = 'photos';
+const DB_VER  = 2;
+
+let _dbPromise = null;
+function getDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const r = indexedDB.open(DB_NAME, DB_VER);
+    r.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+    };
+    r.onsuccess = e => resolve(e.target.result);
+    r.onerror   = e => { _dbPromise = null; reject(e.target.error); };
+    r.onblocked = () => console.warn('IndexedDB blocked — close other tabs');
+  });
+  return _dbPromise;
+}
+
+async function dbSave(p) {
+  try {
+    const db = await getDB();
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ id:p.id, name:p.name, origSz:p.origSz, compSz:p.compSz, comp:p.comp, status:p.status });
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  } catch (e) { console.error('dbSave', e); }
+}
+
+async function dbDelete(id) {
+  try {
+    const db = await getDB();
+    db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+  } catch (e) { console.error('dbDelete', e); }
+}
+
+async function dbClear() {
+  try {
+    const db = await getDB();
+    db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
+    localStorage.removeItem('perfiKlose_folderName');
+    localStorage.removeItem('perfiKlose_savedAt');
+  } catch (e) { console.error('dbClear', e); }
+}
+
+async function dbLoadAll() {
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => resolve(req.result.map(p => ({ ...p, blob: null, url: p.comp ? URL.createObjectURL(p.comp) : '' })));
+      req.onerror   = () => reject(req.error);
+    });
+  } catch (e) { console.error('dbLoadAll', e); return []; }
+}
+
+// ── Folder Naming ──────────────────────────────────────────────────────────
+let folderName = '';
+function newFolder() {
+  const d = new Date();
+  folderName = `Photos_${d.toISOString().slice(0,10)}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  localStorage.setItem('perfiKlose_folderName', folderName);
+  localStorage.setItem('perfiKlose_savedAt',    Date.now());
+}
+
+// ── Startup ────────────────────────────────────────────────────────────────
+$('hero-quality').textContent = Math.round(Q * 100) + '%';
+
+folderName = localStorage.getItem('perfiKlose_folderName');
+if (!folderName) newFolder();
+
+// Migration: seed savedAt for existing users who don't have it yet
+if (folderName && !localStorage.getItem('perfiKlose_savedAt')) {
+  localStorage.setItem('perfiKlose_savedAt', Date.now());
+}
+
+dbLoadAll().then(list => {
+  photos = list;
+  render();
+  // Stale batch warning (Fix #5)
+  if (list.length > 0) {
+    const savedAt = parseInt(localStorage.getItem('perfiKlose_savedAt') || '0', 10);
+    const daysOld = savedAt ? (Date.now() - savedAt) / 86_400_000 : 0;
+    if (daysOld >= STALE_DAYS) {
+      const d = Math.floor(daysOld), n = list.length;
+      $('stale-msg').textContent = `You have ${n} unsent photo${n > 1 ? 's' : ''} from ${d} day${d > 1 ? 's' : ''} ago — share or clear them soon.`;
+      $('stale-banner').classList.add('show');
+    }
+  }
+});
+
+// ── Page Visibility API (Fix #1) ───────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (queue.length > 0 || busy) $('lock-banner').classList.add('show');
+  } else {
+    $('lock-banner').classList.remove('show');
+    if (!busy && queue.length > 0) runQueue(); // resume if stalled
+  }
+});
+
+// ── File Input Handler ─────────────────────────────────────────────────────
+function handleFiles(e) {
+  const files = [...e.target.files];
+  e.target.value = ''; // allow re-selecting the same file
+  files.forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    let n = f.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const dot = n.lastIndexOf('.');
+    n = (dot > -1 ? n.slice(0, dot) : n) + '.jpg';
+    const p = {
+      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      name:   n,
+      origSz: f.size,
+      compSz: 0,
+      blob:   f,
+      comp:   null,
+      url:    '',
+      status: 'q'
+    };
+    photos.push(p);
+    queue.push(p);
+  });
+  render();
+  runQueue();
+}
+$('cam').onchange       = handleFiles;
+$('gal').onchange       = handleFiles;
+
+// ── Sequential Compression Queue ───────────────────────────────────────────
+async function runQueue() {
+  if (busy || !queue.length) return;
+  busy = true;
+  const p = queue.shift();
+  try { await compress(p); } catch (e) { p.status = 'err'; console.error('compress', e); }
+  busy = false;
+  if (!queue.length) $('lock-banner').classList.remove('show');
+  runQueue(); // tail-call next item
+}
+
+// ── Two-Pass Downscale for Ultra-High-MP Images (Fix #2) ──────────────────
+function safeDrawImage(img, ctx, w, h) {
+  const srcPixels = img.naturalWidth * img.naturalHeight;
+  if (srcPixels > MAX_PIXELS) {
+    // Pre-scale on intermediate canvas to avoid GPU/heap spike
+    const scale = Math.sqrt(MAX_PIXELS / srcPixels);
+    const iw    = Math.round(img.naturalWidth  * scale);
+    const ih    = Math.round(img.naturalHeight * scale);
+    const tmp   = document.createElement('canvas');
+    tmp.width = iw; tmp.height = ih;
+    tmp.getContext('2d').drawImage(img, 0, 0, iw, ih);
+    ctx.drawImage(tmp, 0, 0, w, h);
+    tmp.width = tmp.height = 0; // release memory
+  } else {
+    ctx.drawImage(img, 0, 0, w, h);
+  }
+}
+
+function compress(p) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onerror = () => { p.status = 'err'; render(); resolve(); };
+    reader.onload  = () => {
+      const img = new Image();
+      img.onerror = () => { p.status = 'err'; render(); resolve(); };
+      img.onload  = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * (MAX / w)); w = MAX; }
+          else       { w = Math.round(w * (MAX / h)); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        safeDrawImage(img, canvas.getContext('2d'), w, h);
+        canvas.toBlob(blob => {
+          if (!blob) { p.status = 'err'; render(); resolve(); return; }
+          p.comp   = blob;
+          p.compSz = blob.size;
+          p.url    = URL.createObjectURL(blob);
+          p.status = 'ok';
+          p.blob   = null; // release original file reference
+          dbSave(p);
+          render();
+          resolve();
+        }, 'image/jpeg', Q);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(p.blob);
+  });
+}
+
+// ── Delete / Clear ─────────────────────────────────────────────────────────
+window.del = id => {
+  const i = photos.findIndex(p => p.id === id);
+  if (i > -1) {
+    if (photos[i].url) URL.revokeObjectURL(photos[i].url);
+    photos.splice(i, 1);
+    dbDelete(id);
+    render();
+  }
+};
+
+window.clearAll = () => {
+  photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
+  photos = []; queue = []; busy = false;
+  $('stale-banner').classList.remove('show');
+  dbClear();
+  newFolder();
+  render();
+  toast('Tray reset for next batch');
+};
+
+// ── Render — Incremental DOM Diff ─────────────────────────────────────────
+const cardMap = new Map();
+
+function render() {
+  const grid = $('grid');
+  const n    = photos.length;
+
+  // Header badge + visibility
+  $('cnt').textContent     = n > 0 ? `${n} Item${n > 1 ? 's' : ''}` : '0 Items';
+  $('clr').style.display   = n ? 'inline-flex' : 'none';
+  $('empty').style.display = n ? 'none' : 'flex';
+  grid.style.display       = n ? 'grid' : 'none';
+
+  // Remove cards for deleted photos
+  for (const [id, node] of cardMap) {
+    if (!photos.find(p => p.id === id)) { node.remove(); cardMap.delete(id); }
+  }
+
+  // Update or insert cards, maintaining array order
+  photos.forEach((p, idx) => {
+    let card = cardMap.get(p.id);
+    if (!card) { card = document.createElement('div'); cardMap.set(p.id, card); }
+    card.className = 'card' + (p.status === 'q' ? ' loading' : '');
+
+    if (p.status === 'q') {
+      card.innerHTML = `
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+        <div class="spin">
+          <div class="spinner"></div>
+          <span style="color:rgba(255,255,255,.5);font-size:.6rem;">…</span>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);font-size:.6rem;padding:.3rem .4rem;display:flex;justify-content:space-between;">
+          <span style="color:rgba(255,255,255,.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name.slice(0,12))}</span>
+          <span style="color:rgba(255,255,255,.4);">${fmtSz(p.origSz)}</span>
+        </div>`;
+    } else if (p.status === 'err') {
+      card.innerHTML = `
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+        <div class="spin" style="gap:.25rem;">
+          <span style="font-size:1.25rem;">⚠️</span>
+          <span style="color:#fca5a5;font-size:.6rem;font-weight:600;">Error</span>
+        </div>
+        <button class="del" onclick="del('${p.id}')">✕</button>`;
+    } else {
+      const sv = p.origSz > 0 ? Math.round((p.origSz - p.compSz) / p.origSz * 100) : 0;
+      card.innerHTML = `
+        <img src="${p.url}" alt="${esc(p.name)}" loading="lazy">
+        <span style="position:absolute;top:.35rem;left:.35rem;background:rgba(2,44,20,.9);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .32rem;border-radius:5px;z-index:2;">-${sv}%</span>
+        <button class="del" onclick="del('${p.id}')">✕</button>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-size:.6rem;padding:.32rem .4rem;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;">${esc(p.name.slice(0,10))}</span>
+          <span style="color:#93c5fd;font-weight:700;">${fmtSz(p.compSz)}</span>
+        </div>`;
+    }
+
+    // Keep DOM order in sync with photos array
+    const ref = grid.children[idx];
+    if (ref !== card) grid.insertBefore(card, ref || null);
+  });
+
+  // ── Compute totals (single O(n) pass) ──
+  let totalOrig = 0, totalComp = 0, allReady = n > 0;
+  photos.forEach(p => {
+    totalOrig += p.origSz;
+    if (p.status === 'ok') totalComp += p.compSz;
+    else { totalComp += p.origSz; if (p.status === 'q') allReady = false; }
+  });
+
+  // ── Update Hero Stats ──
+  const saved   = Math.max(0, totalOrig - totalComp);
+  const savePct = totalOrig > 0 ? Math.round(saved / totalOrig * 100) : 0;
+  const ratio   = totalComp > 0 && totalOrig > 0
+    ? (totalOrig / totalComp).toFixed(1) + ':1'
+    : '—';
+  const sp = fmtSzParts(totalComp);
+  $('hero-num').textContent      = sp.num;
+  $('hero-unit').textContent     = sp.unit;
+  $('hero-ratio').textContent    = ratio;
+  $('hero-progress').style.width = Math.min(savePct, 100) + '%';
+  $('hero-recovery').textContent = savePct + '% Recovery';
+
+  // ── Share button state ──
+  $('sbtn').disabled      = !allReady;
+  $('sbtn').style.opacity = allReady ? '1' : '0.38';
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtSz(b) {
+  if (!b || b < 0) return '0 B';
+  const u = ['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
+  return parseFloat((b / Math.pow(1024, i)).toFixed(1)) + ' ' + u[i];
+}
+
+function fmtSzParts(b) {
+  if (!b || b <= 0) return { num: '0', unit: 'B' };
+  const u = ['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
+  return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
+}
+
+// ── ZIP Helpers ────────────────────────────────────────────────────────────
+async function makeZip() {
+  const z = new JSZip();
+  const f = z.folder(folderName);
+  photos.forEach(p => { if (p.status === 'ok' && p.comp) f.file(p.name, p.comp); });
+  return z.generateAsync({ type: 'blob' });
+}
+
+async function triggerDownload(blob, filename) {
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = u; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 15_000);
+}
+
+// ── Share (Fix #3 + #4) ────────────────────────────────────────────────────
+async function shareFolder() {
+  const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
+  if (readyPhotos.length === 0) { toast('No compressed photos ready yet', 'err'); return; }
+
+  // Fix #3: Clear prompt with storage cleanup reminder
+  const saveFirst = confirm(
+    'Save a ZIP backup to your phone before sharing?\n\n' +
+    'Tip: Your Downloads folder keeps this file until you manually delete it. ' +
+    'Remember to clear old batches from your Files app periodically.'
+  );
+  let zipBlob;
+  if (saveFirst) {
+    toast('Creating ZIP…');
+    zipBlob = await makeZip();
+    await triggerDownload(zipBlob, folderName + '.zip');
+    toast('Saved to Downloads!', 'ok');
+  }
+
+  toast('Packaging…');
+  try {
+    const filesToShare = readyPhotos.map(p => new File([p.comp], p.name, { type: 'image/jpeg' }));
+
+    if (navigator.canShare && navigator.canShare({ files: filesToShare })) {
+      await navigator.share({ files: filesToShare, title: 'PerfiKlose — ' + folderName });
+      toast('Shared!', 'ok');
+      // Fix #4: Gmail silently drops attachments — inform user
+      setTimeout(() => {
+        alert(
+          'Photos sent to your email app!\n\n' +
+          'If you use Gmail and the photos did not appear as attachments, ' +
+          'open your Files/Downloads folder and attach ' + folderName + '.zip manually.'
+        );
+        promptClear();
+      }, 600);
+    } else {
+      // Fallback: download ZIP + open mailto
+      if (!saveFirst) {
+        toast('Creating ZIP…');
+        zipBlob = await makeZip();
+        await triggerDownload(zipBlob, folderName + '.zip');
+      }
+      toast('Opening email client…', 'ok');
+      window.location.href =
+        'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
+        '&body=' + encodeURIComponent(
+          'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
+          folderName + '.zip\n\n' +
+          'Tap the 📎 paperclip icon in your email app to attach it before sending.\n\n' +
+          'Sent via PerfiKlose.'
+        );
+      setTimeout(() => {
+        alert(
+          'Your email client is opening.\n\n' +
+          'The ZIP has been saved as:\n' + folderName + '.zip\n\n' +
+          'Tap the 📎 paperclip icon in your email app to attach it.'
+        );
+        promptClear();
+      }, 1200);
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('Share failed — try again', 'err');
+  }
+}
+
+function promptClear() {
+  if (confirm('Batch prepared! Clear the tray and start a new batch?')) clearAll();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function showSettings() {
+  $('q-slider').value = Q;
+  $('q-val').textContent = Math.round(Q * 100) + '%';
+  $('max-slider').value = MAX;
+  $('max-val').textContent = MAX + 'px';
+  $('settings-modal').classList.add('show');
+}
+
+function closeSettings() {
+  $('settings-modal').classList.remove('show');
+}
+
+$('q-slider').oninput = e => {
+  Q = parseFloat(e.target.value);
+  const pct = Math.round(Q * 100) + '%';
+  $('q-val').textContent = pct;
+  $('hero-quality').textContent = pct;
+  localStorage.setItem('perfiKlose_q', Q);
+};
+
+$('max-slider').oninput = e => {
+  MAX = parseInt(e.target.value, 10);
+  $('max-val').textContent = MAX + 'px';
+  localStorage.setItem('perfiKlose_max', MAX);
+};
+
+// ── PWA Update (Fix #6) ────────────────────────────────────────────────────
+function applyUpdate() {
+  if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  else window.location.reload();
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      swReg = reg;
+      if (reg.waiting) $('update-banner').classList.add('show');
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            swReg = reg;
+            $('update-banner').classList.add('show');
+          }
+        });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    }).catch(err => console.error('SW failed', err));
+  });
+}
+</script>
+</body>
+</html>

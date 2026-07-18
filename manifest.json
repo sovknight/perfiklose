@@ -1,0 +1,23 @@
+{
+  "name": "PerfiKlose",
+  "short_name": "PerfiKlose",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230b0c10'/><circle cx='96' cy='96' r='48' stroke='%236366f1' stroke-width='12' fill='none'/><circle cx='96' cy='96' r='20' fill='%2306b6d4'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230b0c10'/><circle cx='256' cy='256' r='128' stroke='%236366f1' stroke-width='32' fill='none'/><circle cx='256' cy='256' r='50' fill='%2306b6d4'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
