@@ -29,15 +29,13 @@ Look at the large blue **Stats Card** at the top of the screen:
 * **Total Size**: This large number tells you exactly how much storage space your entire compressed batch will consume. Keeping an eye on this ensures you stay under typical email limits (25 MB).
 * **Progress Bar**: Shows the total percentage of storage space you've successfully recovered/saved compared to the original files.
 
-### Step 4: Save and Share
+### Step 4: Share Your Photos
 When you are ready to send the batch:
 1. Tap the **Share** button located centrally on the **bottom navigation bar**.
-2. **Save to Phone Prompt**: You will be asked if you want to save the photo batch as a ZIP archive to your phone's storage. Tap **OK** to save a local backup to your Files/Downloads folder. *(Tip: Don't forget to delete these older ZIP files occasionally to free up space!)*
-3. **Choose Email App**: Next, your phone’s native share menu will pop up. Select your email app (like **Gmail**, **Mail**, or **Outlook**).
-   - *If using a secure link*: The photos will attach directly to a new email draft.
-   - *If using a local file/link (fallback)*: The email client will open. You must manually tap the paperclip icon inside your mail app and attach the `Photos_xxxx.zip` file you downloaded in step 2. *(Note: Gmail on iOS heavily relies on this fallback!)*
-4. **Send**: Type in the recipient's email address and tap send.
-5. **Reset Prompt**: After returning to the app, it will ask if you want to clear the tray. Tap **OK** to empty your workspace and start a fresh batch.
+2. **Opening Share Menu**: The app will automatically bundle all your photos into a single ZIP file (e.g. `Photos_xxxx.zip`) and open your phone's native share menu.
+3. **Choose Email App**: Select your email app (like **Gmail**, **Mail**, or **Outlook**).
+4. **Automatic Attachment**: The single ZIP file will automatically attach to a new email draft. (Since it is shared directly as a single ZIP, iOS email clients will attach it cleanly with one tap!).
+5. **Send & Reset**: Type the recipient's email, send, and return to PerfiKlose. Tap **OK** on the prompt to clear the tray and start a new batch.
 
 ---
 
