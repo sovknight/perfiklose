@@ -882,8 +882,26 @@ async function shareFolder() {
     }
   }
 
-  // Fallback: download the ZIP directly
+  // Fallback: download the ZIP directly and open email client
   await triggerDownload(zipBlob, folderName + '.zip');
+  
+  if (!isIOS) {
+    alert(
+      '📧 Android Sharing Tip\n\n' +
+      'Your photos have been saved as a ZIP file.\n\n' +
+      'Your email app is about to open. Please tap the 📎 paperclip icon and attach the ZIP file from your Downloads folder.'
+    );
+  }
+
+  window.location.href =
+    'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
+    '&body=' + encodeURIComponent(
+      'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
+      folderName + '.zip\n\n' +
+      'Tap the 📎 paperclip icon in your email app to attach it before sending.\n\n' +
+      'Sent via PerfiKlose.'
+    );
+
   toast('ZIP saved to Downloads!', 'ok');
   promptClear();
 }
