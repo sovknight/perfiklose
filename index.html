@@ -823,46 +823,71 @@ async function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(u), 15_000);
 }
 
-// ── Share (Fix #3 + #4) ────────────────────────────────────────────────────
+// ── Share — Layered Strategy ───────────────────────────────────────────────
 async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (readyPhotos.length === 0) { toast('No compressed photos ready yet', 'err'); return; }
 
-  toast('Packaging ZIP…');
+  toast('Preparing photos…');
   try {
+    // Strategy 1: Share individual JPEG images (best cross-platform support)
+    const imgFiles = readyPhotos.map(p => new File([p.comp], p.name, { type: 'image/jpeg' }));
+    if (navigator.canShare && navigator.canShare({ files: imgFiles })) {
+      await navigator.share({ files: imgFiles, title: folderName });
+      toast('Shared!', 'ok');
+      promptClear();
+      return;
+    }
+
+    // Strategy 2: Share as a single ZIP file
+    toast('Packaging ZIP…');
     const zipBlob = await makeZip();
     const zipFile = new File([zipBlob], folderName + '.zip', { type: 'application/zip' });
-
     if (navigator.canShare && navigator.canShare({ files: [zipFile] })) {
-      toast('Opening Share Menu…', 'ok');
       await navigator.share({ files: [zipFile], title: folderName });
       toast('Shared!', 'ok');
       promptClear();
-    } else {
-      // Fallback: Download ZIP + open mailto
-      toast('Downloading ZIP…');
-      await triggerDownload(zipBlob, folderName + '.zip');
-      toast('Opening email client…', 'ok');
-      window.location.href =
-        'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
-        '&body=' + encodeURIComponent(
-          'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
-          folderName + '.zip\n\n' +
-          'Tap the 📎 paperclip icon in your email app to attach it before sending.\n\n' +
-          'Sent via PerfiKlose.'
-        );
-      setTimeout(() => {
-        alert(
-          'Your email client is opening.\n\n' +
-          'The ZIP has been saved to your Downloads as:\n' + folderName + '.zip\n\n' +
-          'Tap the 📎 paperclip icon in your email app to attach it.'
-        );
-        promptClear();
-      }, 1200);
+      return;
     }
+
+    // Strategy 3: Download ZIP + mailto fallback
+    toast('Downloading ZIP…');
+    await triggerDownload(zipBlob || await makeZip(), folderName + '.zip');
+    toast('Opening email client…', 'ok');
+    window.location.href =
+      'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
+      '&body=' + encodeURIComponent(
+        'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
+        folderName + '.zip\n\n' +
+        'Tap the 📎 paperclip icon in your email app to attach it before sending.\n\n' +
+        'Sent via PerfiKlose.'
+      );
+    setTimeout(() => {
+      alert(
+        'Your email client is opening.\n\n' +
+        'The ZIP has been saved to your Downloads as:\n' + folderName + '.zip\n\n' +
+        'Tap the 📎 paperclip icon in your email app to attach it.'
+      );
+      promptClear();
+    }, 1200);
+
   } catch (e) {
-    if (e.name !== 'AbortError') {
-      console.error('Share failed', e);
+    if (e.name === 'AbortError') return; // user cancelled share sheet
+    console.error('Share failed', e);
+    // If share threw an error, fall back to download
+    try {
+      toast('Downloading ZIP instead…');
+      const zipBlob = await makeZip();
+      await triggerDownload(zipBlob, folderName + '.zip');
+      toast('ZIP saved to Downloads!', 'ok');
+      alert(
+        'The share menu was unavailable.\n\n' +
+        'Your photos have been saved as:\n' + folderName + '.zip\n\n' +
+        'Open your email app and attach this file from your Downloads folder.'
+      );
+      promptClear();
+    } catch (e2) {
+      console.error('Download fallback failed', e2);
       toast('Share failed — try again', 'err');
     }
   }
