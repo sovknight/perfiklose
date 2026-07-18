@@ -852,48 +852,12 @@ async function shareFolder() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
-  // iOS-only tip (once per session)
-  if (isIOS && !shareFolder._tipped) {
-    shareFolder._tipped = true;
-    alert(
-      '📧 iPhone Sharing Tip\n\n' +
-      'Your photos will be saved as a ZIP file.\n\n' +
-      'To email them:\n' +
-      '1. Tap "Save to Files" or let it download\n' +
-      '2. Open your email app\n' +
-      '3. Tap the 📎 paperclip and look in Recents or Downloads'
-    );
-  }
-
-  toast('Creating ZIP…');
+  toast('Packaging ZIP…');
   const zipBlob = await makeZip();
   const zipFile = new File([zipBlob], folderName + '.zip', { type: 'application/zip' });
 
-  // Try native share
-  if (navigator.share) {
-    try {
-      await navigator.share({ files: [zipFile], title: folderName });
-      toast('Shared!', 'ok');
-      promptClear();
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      console.warn('Share failed, downloading instead…', e.message);
-    }
-  }
-
-  // Fallback: download the ZIP directly and open email client
-  await triggerDownload(zipBlob, folderName + '.zip');
-  
-  if (!isIOS) {
-    alert(
-      '📧 Android Sharing Tip\n\n' +
-      'Your photos have been saved as a ZIP file.\n\n' +
-      'Your email app is about to open. Please tap the 📎 paperclip icon and attach the ZIP file from your Downloads folder.'
-    );
-  }
-
-  window.location.href =
+  // Common mailto link for manual attachment fallbacks
+  const mailToUrl =
     'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
     '&body=' + encodeURIComponent(
       'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
@@ -902,8 +866,50 @@ async function shareFolder() {
       'Sent via PerfiKlose.'
     );
 
-  toast('ZIP saved to Downloads!', 'ok');
-  promptClear();
+  if (isIOS) {
+    // Apple (iOS) Path: Download ZIP, show alert, open mailto
+    toast('Downloading ZIP…');
+    await triggerDownload(zipBlob, folderName + '.zip');
+    toast('Opening email client…', 'ok');
+    
+    setTimeout(() => {
+      alert(
+        '📧 iPhone Sharing Tip\n\n' +
+        'Your photos are saved as a ZIP file.\n\n' +
+        'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
+      );
+      window.location.href = mailToUrl;
+      promptClear();
+    }, 100);
+
+  } else {
+    // Android Path: Download ZIP, then try native share for auto-attachment
+    toast('Downloading ZIP…');
+    await triggerDownload(zipBlob, folderName + '.zip');
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ files: [zipFile], title: folderName });
+        toast('Shared!', 'ok');
+        promptClear();
+      } else {
+        throw new Error('Web Share API not available');
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return; // User cancelled the share menu
+
+      // Fallback if Android Chrome blocks sharing ZIPs
+      setTimeout(() => {
+        alert(
+          '📧 Android Sharing Tip\n\n' +
+          'Your photos are saved as a ZIP file.\n\n' +
+          'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.'
+        );
+        window.location.href = mailToUrl;
+        promptClear();
+      }, 100);
+    }
+  }
 }
 
 function promptClear() {
