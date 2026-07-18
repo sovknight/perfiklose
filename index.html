@@ -18,17 +18,15 @@
 <!-- JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<!-- Tailwind CDN -->
-<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: { extend: {
-      colors: { primary: '#0058bc' },
-      fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
-    }}
-  };
-</script>
+<!-- Utility CSS (replaces Tailwind CDN, saves ~350KB) -->
+<style>
+  .flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}
+  .fixed{position:fixed}.top-0{top:0}.left-0{left:0}.w-full{width:100%}.z-50{z-index:50}.h-16{height:4rem}
+  .px-5{padding-left:1.25rem;padding-right:1.25rem}.mx-auto{margin-left:auto;margin-right:auto}.max-w-xl{max-width:36rem}
+  .gap-2\.5{gap:.625rem}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.tracking-tighter{letter-spacing:-.05em}
+  .rounded-full{border-radius:9999px}.transition-transform{transition:transform .1s}.overflow-hidden{overflow:hidden}
+  .relative{position:relative}.active\:scale-90:active{transform:scale(.9)}
+</style>
 
 <style>
 /* ── Reset & Base ─────────────────────────────────────────────────────── */
@@ -478,14 +476,25 @@ let busy    = false;
 let swReg   = null; // Service worker registration handle
 const $ = id => document.getElementById(id);
 
-// ── Glow Orb Parallax ─────────────────────────────────────────────────────
-window.addEventListener('mousemove', e => {
-  const orb = $('glow-orb');
-  if (!orb) return;
-  const x = (window.innerWidth  / 2 - e.pageX) / 28;
-  const y = (window.innerHeight / 2 - e.pageY) / 28;
-  orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
-}, { passive: true });
+// ── Glow Orb Parallax (throttled with rAF) ────────────────────────────────
+{
+  let _rafPending = false;
+  let _ex = 0, _ey = 0;
+  window.addEventListener('mousemove', e => {
+    _ex = e.pageX; _ey = e.pageY;
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(() => {
+      const orb = $('glow-orb');
+      if (orb) {
+        const x = (window.innerWidth  / 2 - _ex) / 28;
+        const y = (window.innerHeight / 2 - _ey) / 28;
+        orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
+      }
+      _rafPending = false;
+    });
+  }, { passive: true });
+}
 
 // ── IndexedDB — singleton cached connection ────────────────────────────────
 const DB_NAME = 'PerfiKloseDB';
@@ -520,7 +529,9 @@ async function dbSave(p) {
 async function dbDelete(id) {
   try {
     const db = await getDB();
-    db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   } catch (e) { console.error('dbDelete', e); }
 }
 
@@ -664,6 +675,7 @@ function compress(p) {
         canvas.width = w; canvas.height = h;
         safeDrawImage(img, canvas.getContext('2d'), w, h);
         canvas.toBlob(blob => {
+          canvas.width = canvas.height = 0; // release GPU memory immediately
           if (!blob) { p.status = 'err'; render(); resolve(); return; }
           p.comp   = blob;
           p.compSz = blob.size;
@@ -703,7 +715,8 @@ window.clearAll = () => {
 };
 
 // ── Render — Incremental DOM Diff ─────────────────────────────────────────
-const cardMap = new Map();
+const cardMap    = new Map(); // id → DOM node
+const cardStatus = new Map(); // id → last rendered status (skip unnecessary innerHTML sets)
 
 function render() {
   const grid = $('grid');
@@ -715,46 +728,54 @@ function render() {
   $('empty').style.display = n ? 'none' : 'flex';
   grid.style.display       = n ? 'grid' : 'none';
 
-  // Remove cards for deleted photos
+  // Remove cards for deleted photos — collect first, then delete (avoids mutating during iteration)
+  const currentIds = new Set(photos.map(p => p.id)); // O(1) lookup
+  const toRemove = [];
   for (const [id, node] of cardMap) {
-    if (!photos.find(p => p.id === id)) { node.remove(); cardMap.delete(id); }
+    if (!currentIds.has(id)) toRemove.push(id);
   }
+  toRemove.forEach(id => { cardMap.get(id).remove(); cardMap.delete(id); cardStatus.delete(id); });
 
   // Update or insert cards, maintaining array order
   photos.forEach((p, idx) => {
     let card = cardMap.get(p.id);
     if (!card) { card = document.createElement('div'); cardMap.set(p.id, card); }
-    card.className = 'card' + (p.status === 'q' ? ' loading' : '');
 
-    if (p.status === 'q') {
-      card.innerHTML = `
-        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
-        <div class="spin">
-          <div class="spinner"></div>
-          <span style="color:rgba(255,255,255,.5);font-size:.6rem;">…</span>
-        </div>
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);font-size:.6rem;padding:.3rem .4rem;display:flex;justify-content:space-between;">
-          <span style="color:rgba(255,255,255,.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name.slice(0,12))}</span>
-          <span style="color:rgba(255,255,255,.4);">${fmtSz(p.origSz)}</span>
-        </div>`;
-    } else if (p.status === 'err') {
-      card.innerHTML = `
-        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
-        <div class="spin" style="gap:.25rem;">
-          <span style="font-size:1.25rem;">⚠️</span>
-          <span style="color:#fca5a5;font-size:.6rem;font-weight:600;">Error</span>
-        </div>
-        <button class="del" onclick="del('${p.id}')">✕</button>`;
-    } else {
-      const sv = p.origSz > 0 ? Math.round((p.origSz - p.compSz) / p.origSz * 100) : 0;
-      card.innerHTML = `
-        <img src="${p.url}" alt="${esc(p.name)}" loading="lazy">
-        <span style="position:absolute;top:.35rem;left:.35rem;background:rgba(2,44,20,.9);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .32rem;border-radius:5px;z-index:2;">-${sv}%</span>
-        <button class="del" onclick="del('${p.id}')">✕</button>
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-size:.6rem;padding:.32rem .4rem;display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;">${esc(p.name.slice(0,10))}</span>
-          <span style="color:#93c5fd;font-weight:700;">${fmtSz(p.compSz)}</span>
-        </div>`;
+    // Only rebuild innerHTML when status actually changed (optimization: avoids layout thrash)
+    if (cardStatus.get(p.id) !== p.status) {
+      cardStatus.set(p.id, p.status);
+      card.className = 'card' + (p.status === 'q' ? ' loading' : '');
+
+      if (p.status === 'q') {
+        card.innerHTML = `
+          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+          <div class="spin">
+            <div class="spinner"></div>
+            <span style="color:rgba(255,255,255,.5);font-size:.6rem;">…</span>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);font-size:.6rem;padding:.3rem .4rem;display:flex;justify-content:space-between;">
+            <span style="color:rgba(255,255,255,.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name.slice(0,12))}</span>
+            <span style="color:rgba(255,255,255,.4);">${fmtSz(p.origSz)}</span>
+          </div>`;
+      } else if (p.status === 'err') {
+        card.innerHTML = `
+          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+          <div class="spin" style="gap:.25rem;">
+            <span style="font-size:1.25rem;">⚠️</span>
+            <span style="color:#fca5a5;font-size:.6rem;font-weight:600;">Error</span>
+          </div>
+          <button class="del" onclick="del('${p.id}')">✕</button>`;
+      } else {
+        const sv = p.origSz > 0 ? Math.round((p.origSz - p.compSz) / p.origSz * 100) : 0;
+        card.innerHTML = `
+          <img src="${p.url}" alt="${esc(p.name)}" loading="lazy">
+          <span style="position:absolute;top:.35rem;left:.35rem;background:rgba(2,44,20,.9);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .32rem;border-radius:5px;z-index:2;">-${sv}%</span>
+          <button class="del" onclick="del('${p.id}')">✕</button>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-size:.6rem;padding:.32rem .4rem;display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;">${esc(p.name.slice(0,10))}</span>
+            <span style="color:#93c5fd;font-weight:700;">${fmtSz(p.compSz)}</span>
+          </div>`;
+      }
     }
 
     // Keep DOM order in sync with photos array
@@ -763,11 +784,12 @@ function render() {
   });
 
   // ── Compute totals (single O(n) pass) ──
-  let totalOrig = 0, totalComp = 0, allReady = n > 0;
+  let totalOrig = 0, totalComp = 0, anyReady = false, anyQueued = false;
   photos.forEach(p => {
     totalOrig += p.origSz;
-    if (p.status === 'ok') totalComp += p.compSz;
-    else { totalComp += p.origSz; if (p.status === 'q') allReady = false; }
+    if (p.status === 'ok') { totalComp += p.compSz; anyReady = true; }
+    else if (p.status === 'q') { totalComp += p.origSz; anyQueued = true; }
+    else { totalComp += p.origSz; } // err photos count toward size but not readiness
   });
 
   // ── Update Hero Stats ──
@@ -783,9 +805,10 @@ function render() {
   $('hero-progress').style.width = Math.min(savePct, 100) + '%';
   $('hero-recovery').textContent = savePct + '% Recovery';
 
-  // ── Share button state ──
-  $('sbtn').disabled      = !allReady;
-  $('sbtn').style.opacity = allReady ? '1' : '0.38';
+  // ── Share button: enabled when at least one photo is ready AND none are still queued ──
+  const canShare = anyReady && !anyQueued;
+  $('sbtn').disabled      = !canShare;
+  $('sbtn').style.opacity = canShare ? '1' : '0.38';
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -793,18 +816,17 @@ function esc(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function fmtSz(b) {
-  if (!b || b < 0) return '0 B';
-  const u = ['B','KB','MB','GB'];
-  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
-  return parseFloat((b / Math.pow(1024, i)).toFixed(1)) + ' ' + u[i];
-}
-
+// Single implementation — fmtSz calls fmtSzParts (deduplication)
 function fmtSzParts(b) {
   if (!b || b <= 0) return { num: '0', unit: 'B' };
   const u = ['B','KB','MB','GB'];
   const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
   return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
+}
+
+function fmtSz(b) {
+  const p = fmtSzParts(b);
+  return p.num + ' ' + p.unit;
 }
 
 // ── ZIP Helpers ────────────────────────────────────────────────────────────
