@@ -400,31 +400,18 @@ body {
 <!-- ══ Bottom Navigation (Floating) ══ -->
 <nav style="position:fixed;bottom:1.5rem;left:0;width:100%;z-index:50;
             display:flex;justify-content:center;align-items:center;
-            gap:.875rem;
             padding:0 1.25rem;
             pointer-events:none;">
-  <button id="saveBtn" onclick="saveZipFlow()" class="neon-btn"
+  <button id="shareBtn" onclick="saveAndEmailFlow()" class="neon-btn"
           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
                  padding:.875rem 0;border-radius:999px;
                  background:#fff;color:#0058bc;
                  font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
                  border:none;cursor:pointer;font-family:inherit;
-                 flex:1;max-width:280px;
+                 flex:1;max-width:320px;
                  transition:opacity .2s,transform .1s,background-color .2s;">
-    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.35rem;">download</span>
-    Save ZIP
-  </button>
-  <button id="emailBtn" onclick="emailZipFlow()" disabled
-          style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                 padding:.875rem 0;border-radius:999px;
-                 background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);
-                 font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
-                 border:1px solid rgba(255,255,255,0.15);cursor:not-allowed;font-family:inherit;
-                 flex:1;max-width:280px;
-                 transition:opacity .2s,transform .1s,background-color .2s,color .2s,border-color .2s;
-                 opacity:0.38;">
-    <span class="material-symbols-outlined" style="font-size:1.35rem;">mail</span>
-    Email ZIP
+    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.35rem;">send</span>
+    Save &amp; Email
   </button>
 </nav>
 
@@ -496,7 +483,6 @@ const STALE_DAYS = 5;             // days before stale batch warning fires
 let photos   = [];   // Array of photo objects
 let queue    = [];   // Pending compression jobs
 let busy     = false;
-let zipSaved = false; // Tracks if the current batch has been saved
 let swReg    = null; // Service worker registration handle
 const $ = id => document.getElementById(id);
 
@@ -674,7 +660,6 @@ function handleFiles(e) {
     photos.push(p);
     queue.push(p);
   });
-  zipSaved = false;
   render();
   runQueue();
 }
@@ -735,7 +720,6 @@ function compress(p) {
           p.status = 'ok';
           p.blob   = null; // release original file reference
           dbSave(p);
-          zipSaved = false;
           render();
           resolve();
         }, 'image/jpeg', Q);
@@ -753,7 +737,6 @@ window.del = id => {
     if (photos[i].url) URL.revokeObjectURL(photos[i].url);
     photos.splice(i, 1);
     dbDelete(id);
-    zipSaved = false;
     render();
   }
 };
@@ -761,7 +744,6 @@ window.del = id => {
 window.clearAll = () => {
   photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
   photos = []; queue = []; busy = false;
-  zipSaved = false;
   $('stale-banner').classList.remove('show');
   dbClear();
   newFolder();
@@ -860,35 +842,16 @@ function render() {
   $('hero-progress').style.width = Math.min(savePct, 100) + '%';
   $('hero-recovery').textContent = savePct + '% Recovery';
 
-  // ── Buttons state ──
-  const canSave = anyReady && !anyQueued;
-  $('saveBtn').disabled = !canSave;
-  $('saveBtn').style.opacity = canSave ? '1' : '0.38';
-  $('saveBtn').style.cursor = canSave ? 'pointer' : 'not-allowed';
-  if (canSave) {
-    $('saveBtn').classList.add('neon-btn');
+  // ── Share button state ──
+  const canShare = anyReady && !anyQueued;
+  $('shareBtn').disabled = !canShare;
+  $('shareBtn').style.opacity = canShare ? '1' : '0.38';
+  $('shareBtn').style.cursor = canShare ? 'pointer' : 'not-allowed';
+  if (canShare) {
+    $('shareBtn').classList.add('neon-btn');
   } else {
-    $('saveBtn').classList.remove('neon-btn');
-    $('saveBtn').style.transform = 'scale(1)';
-  }
-
-  const canEmail = zipSaved && canSave;
-  $('emailBtn').disabled = !canEmail;
-  if (canEmail) {
-    $('emailBtn').classList.add('neon-btn');
-    $('emailBtn').style.background = '#0058bc';
-    $('emailBtn').style.color = '#fff';
-    $('emailBtn').style.borderColor = 'transparent';
-    $('emailBtn').style.opacity = '1';
-    $('emailBtn').style.cursor = 'pointer';
-  } else {
-    $('emailBtn').classList.remove('neon-btn');
-    $('emailBtn').style.background = 'rgba(255,255,255,0.1)';
-    $('emailBtn').style.color = 'rgba(255,255,255,0.4)';
-    $('emailBtn').style.borderColor = 'rgba(255,255,255,0.15)';
-    $('emailBtn').style.opacity = '0.38';
-    $('emailBtn').style.cursor = 'not-allowed';
-    $('emailBtn').style.transform = 'scale(1)';
+    $('shareBtn').classList.remove('neon-btn');
+    $('shareBtn').style.transform = 'scale(1)';
   }
 }
 
@@ -946,51 +909,50 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(u), 30_000);
 }
 
-// ── Share — ZIP Only ───────────────────────────────────────────────────────
+// ── Save & Email (Unified Flow) ────────────────────────────────────────────
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-let zipBlobCache = null; // Cache to pass generated ZIP data from Step 1 to Step 2
-
-async function saveZipFlow() {
+async function saveAndEmailFlow() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
   toast('Preparing ZIP…');
-  zipBlobCache = await makeZip();
+  const zipBlob = await makeZip();
+  const zipFileName = folderName + '.zip';
+
+  // Step 1: Show modal with Download button (ensures a fresh user gesture for the download)
+  const attachFolder = isIOS ? 'Recents or Downloads' : 'Downloads';
 
   showDialog({
-    title: '💾 Save ZIP to Device',
-    msg: 'Your ZIP file <b>' + esc(folderName) + '.zip</b> is ready.<br><br>Tap <b>Download File</b> below to save it to your device.',
-    okText: 'Download File',
+    title: '📧 Save & Email',
+    msg: 'Your ZIP file <b>' + esc(zipFileName) + '</b> is ready.<br><br>' +
+         'Tap <b>Download & Continue</b> to save the ZIP to your device, then open your email app.',
+    okText: 'Download & Continue',
     cancelText: 'Cancel',
     onOk: () => {
-      triggerDownload(zipBlobCache, folderName + '.zip');
-      zipSaved = true;
-      render();
-      toast('✅ ZIP file saved to your device!', 'ok');
-    }
-  });
-}
+      // Step 2: Trigger download from the fresh user tap
+      triggerDownload(zipBlob, zipFileName);
+      toast('✅ ZIP saved!', 'ok');
 
-async function emailZipFlow() {
-  if (!zipSaved || !zipBlobCache) { toast('Please save the ZIP first', 'err'); return; }
+      // Step 3: After a brief moment for the download to start, show the email prompt
+      setTimeout(() => {
+        const mailToUrl =
+          'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
+          '&body=' + encodeURIComponent('Here are the latest pictures you took, sent via Perfiklose.');
 
-  const mailToUrl =
-    'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
-    '&body=' + encodeURIComponent('Here are the latest pictures you took, sent via Perfiklose.');
+        waitingForEmailReturn = true;
 
-  const platformTip = isIOS
-    ? 'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
-    : 'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.';
-
-  waitingForEmailReturn = true; // Set flag so we catch when they return to browser
-
-  showDialog({
-    title: isIOS ? '📧 iPhone Sharing Tip' : '📧 Android Sharing Tip',
-    msg: platformTip,
-    okText: 'Open Email App',
-    onOk: () => {
-      window.location.href = mailToUrl;
+        showDialog({
+          title: '📎 Attach Your ZIP',
+          msg: 'Your file <b>' + esc(zipFileName) + '</b> is saved to your phone.<br><br>' +
+               'Your email app will open next. Tap the 📎 paperclip icon and select your ZIP from the <b>' + attachFolder + '</b> folder.',
+          okText: 'Open Email App',
+          cancelText: 'Skip Email',
+          onOk: () => {
+            window.location.href = mailToUrl;
+          }
+        });
+      }, 600);
     }
   });
 }
