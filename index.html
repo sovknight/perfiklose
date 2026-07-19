@@ -467,6 +467,18 @@ body {
   </div>
 </div>
 
+<!-- ══ Custom Dialog Modal (Replaces browser alert/confirm to remove domain headers) ══ -->
+<div class="modal-backdrop" id="dialog-modal" onclick="if(event.target===this) closeDialog()">
+  <div class="glass-card" style="border-radius:24px;padding:1.5rem;width:90%;max-width:380px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2600;box-shadow:0 8px 32px rgba(0,0,0,.6);">
+    <h3 id="dialog-title" style="font-weight:700;font-size:1.15rem;color:#fff;margin-bottom:.75rem;letter-spacing:.02em;"></h3>
+    <div id="dialog-msg" style="color:rgba(255,255,255,.8);font-size:.875rem;line-height:1.5;margin-bottom:1.5rem;"></div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+      <button id="dialog-cancel" style="display:none;padding:.6rem 1.25rem;border-radius:999px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);font-weight:600;font-size:.85rem;cursor:pointer;font-family:inherit;"></button>
+      <button id="dialog-ok" class="neon-btn" style="padding:.6rem 1.5rem;border-radius:999px;background:#0058bc;color:#fff;border:none;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit;">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Toast ══ -->
 <div class="toast" id="toast"></div>
 
@@ -617,9 +629,13 @@ document.addEventListener('visibilitychange', () => {
     if (waitingForEmailReturn) {
       waitingForEmailReturn = false;
       setTimeout(() => {
-        if (confirm('✉️ Email Sent!\n\nDid you finish sending your email? Tap OK to clear the tray and start a new batch.')) {
-          clearAll();
-        }
+        showDialog({
+          title: '✉️ Email Sent!',
+          msg: 'Did you finish sending your email? Tap Clear Tray to reset for your next batch.',
+          okText: 'Clear Tray',
+          cancelText: 'Keep Batch',
+          onOk: () => clearAll()
+        });
       }, 400);
     }
   }
@@ -962,17 +978,60 @@ async function emailZipFlow() {
     );
 
   const platformTip = isIOS
-    ? '📧 iPhone Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
-    : '📧 Android Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.';
+    ? 'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
+    : 'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.';
 
   waitingForEmailReturn = true; // Set flag so we catch when they return to browser
 
-  alert(platformTip);
-  window.location.href = mailToUrl;
+  showDialog({
+    title: isIOS ? '📧 iPhone Sharing Tip' : '📧 Android Sharing Tip',
+    msg: platformTip,
+    okText: 'Open Email App',
+    onOk: () => {
+      window.location.href = mailToUrl;
+    }
+  });
 }
 
 function promptClear() {
-  if (confirm('Batch prepared! Clear the tray and start a new batch?')) clearAll();
+  showDialog({
+    title: 'Batch Prepared!',
+    msg: 'Would you like to clear the tray and start a new batch?',
+    okText: 'Clear Tray',
+    cancelText: 'Keep Photos',
+    onOk: () => clearAll()
+  });
+}
+
+// ── Custom Dialog Helpers ──────────────────────────────────────────────────
+function showDialog({ title, msg, okText = 'OK', cancelText = null, onOk, onCancel }) {
+  $('dialog-title').textContent = title || 'PerfiKlose';
+  $('dialog-msg').innerHTML = msg.replace(/\n/g, '<br>');
+
+  const okBtn = $('dialog-ok');
+  okBtn.textContent = okText;
+  okBtn.onclick = () => {
+    closeDialog();
+    if (onOk) onOk();
+  };
+
+  const cancelBtn = $('dialog-cancel');
+  if (cancelText) {
+    cancelBtn.style.display = 'inline-flex';
+    cancelBtn.textContent = cancelText;
+    cancelBtn.onclick = () => {
+      closeDialog();
+      if (onCancel) onCancel();
+    };
+  } else {
+    cancelBtn.style.display = 'none';
+  }
+
+  $('dialog-modal').classList.add('show');
+}
+
+function closeDialog() {
+  $('dialog-modal').classList.remove('show');
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────
