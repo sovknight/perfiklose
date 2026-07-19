@@ -603,13 +603,25 @@ dbLoadAll().then(list => {
   }
 });
 
-// ── Page Visibility API (Fix #1) ───────────────────────────────────────────
+let waitingForEmailReturn = false; // Tracks if user went to email app
+
+// ── Page Visibility API (Fix #1 + Email Return Confirmation) ───────────────
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (queue.length > 0 || busy) $('lock-banner').classList.add('show');
   } else {
     $('lock-banner').classList.remove('show');
     if (!busy && queue.length > 0) runQueue(); // resume if stalled
+    
+    // Check if returning from Email app
+    if (waitingForEmailReturn) {
+      waitingForEmailReturn = false;
+      setTimeout(() => {
+        if (confirm('✉️ Email Sent!\n\nDid you finish sending your email? Tap OK to clear the tray and start a new batch.')) {
+          clearAll();
+        }
+      }, 400);
+    }
   }
 });
 
@@ -923,15 +935,18 @@ async function saveZipFlow() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
-  toast('Packaging ZIP…');
+  // 1. Generate ZIP
   zipBlobCache = await makeZip();
 
-  toast('Downloading ZIP…');
+  // 2. Trigger browser download prompt (no background toast preemptively saying saved)
   await triggerDownload(zipBlobCache, folderName + '.zip');
 
+  // 3. Mark saved & update state
   zipSaved = true;
   render();
-  toast('ZIP saved! Now tap "2. Email ZIP"', 'ok');
+
+  // 4. Confirmation toast & tip
+  toast('ZIP file saved to your device!', 'ok');
 }
 
 async function emailZipFlow() {
@@ -946,17 +961,14 @@ async function emailZipFlow() {
       'Sent via PerfiKlose.'
     );
 
-  toast('Opening email client…', 'ok');
-
   const platformTip = isIOS
     ? '📧 iPhone Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
     : '📧 Android Sharing Tip\n\nYour email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Downloads folder.';
 
-  setTimeout(() => {
-    alert(platformTip);
-    window.location.href = mailToUrl;
-    promptClear();
-  }, 100);
+  waitingForEmailReturn = true; // Set flag so we catch when they return to browser
+
+  alert(platformTip);
+  window.location.href = mailToUrl;
 }
 
 function promptClear() {
