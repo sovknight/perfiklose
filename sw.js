@@ -1,5 +1,5 @@
 // Fix #6: Bump version string on every deployment to force cache refresh
-const CACHE_NAME = 'perfik-v24';
+const CACHE_NAME = 'perfik-v25';
 const ASSETS = [
   'index.html',
   'manifest.json',

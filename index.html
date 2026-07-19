@@ -934,12 +934,16 @@ async function makeZip() {
   return z.generateAsync({ type: 'blob' });
 }
 
-async function triggerDownload(blob, filename) {
+function triggerDownload(blob, filename) {
   const u = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = u; a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(u), 15_000);
+  a.href = u;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 30_000);
 }
 
 // ── Share — ZIP Only ───────────────────────────────────────────────────────
@@ -951,18 +955,21 @@ async function saveZipFlow() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
-  // 1. Generate ZIP
+  toast('Preparing ZIP…');
   zipBlobCache = await makeZip();
 
-  // 2. Trigger browser download prompt (no background toast preemptively saying saved)
-  await triggerDownload(zipBlobCache, folderName + '.zip');
-
-  // 3. Mark saved & update state
-  zipSaved = true;
-  render();
-
-  // 4. Confirmation toast & tip
-  toast('ZIP file saved to your device!', 'ok');
+  showDialog({
+    title: '💾 Save ZIP to Device',
+    msg: 'Your ZIP file <b>' + esc(folderName) + '.zip</b> is ready.<br><br>Tap <b>Download File</b> below to save it to your device.',
+    okText: 'Download File',
+    cancelText: 'Cancel',
+    onOk: () => {
+      triggerDownload(zipBlobCache, folderName + '.zip');
+      zipSaved = true;
+      render();
+      toast('✅ ZIP file saved to your device!', 'ok');
+    }
+  });
 }
 
 async function emailZipFlow() {
