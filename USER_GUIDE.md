@@ -1,36 +1,41 @@
 # PerfiKlose Quick Guide
 
-PerfiKlose is a web app to compress and share photos without installing anything. Open it in your mobile browser (Safari/Chrome).
+PerfiKlose is a fast, web-based tool to capture photos, compress them into compact files, pack them into a single ZIP archive, and email them—without installing any apps.
 
 ---
 
 ## 1. Add Photos
-* **📸 Take Photo (White Pill)**: Opens your camera. Snap and use; it automatically compresses and queues.
-* **🎛️ Gallery (Round Button)**: Select multiple existing photos from your phone.
+* **📸 Take Photo**: Opens your phone's camera. Snap a picture and it compresses automatically.
+* **🎛️ Gallery (Round Button)**: Select multiple existing photos from your phone's photo library.
 
 ## 2. Review Queue
-* **Green Badges (e.g., `-92%`)**: Shows how much storage space you saved per photo.
-* **Remove**: Tap **✕** on a thumbnail to delete it.
-* **Clear**: Tap the red **✕ Clear** button at the top to reset the batch.
-* **Total Size**: The blue card at the top shows your total batch size. Keep it under 25 MB for email.
+* **Green Badges (e.g., `-92%`)**: Shows the percentage of space saved on each photo.
+* **Remove**: Tap **✕** on any thumbnail to delete it.
+* **Clear**: Tap the red **✕ Clear** button in the header to reset the whole batch.
+* **Total Size**: The blue card at the top shows your total batch size and compression ratio.
 
-## 3. Share Your Batch
-When you're ready to send:
-1. Tap **Share** at the bottom of the screen. Your photos will be packaged into a single `.zip` file.
-2. **Android**: Pick your email app from the share menu, and the ZIP will attach automatically.
-3. **iPhone**: Tap **"Save to Files"** in the share menu (or let it download). Then, open your email app, start a new message, tap the paperclip (📎), and attach the ZIP from your Recents/Downloads folder.
-4. Return to PerfiKlose and tap **OK** to clear the tray.
+## 3. Save & Email Your ZIP
+Sharing is broken into two simple floating actions at the bottom of the screen:
+
+1. **Tap "Save ZIP"**:
+   * Packages your compressed photos into a single `.zip` file.
+   * A dialog pops up—tap **Download File** to save the ZIP to your phone's Downloads/Files folder.
+2. **Tap "Email ZIP"**:
+   * Opens your default email app with a pre-filled subject and message (*"Here are the latest pictures you took, sent via Perfiklose."*).
+   * Tap the 📎 paperclip icon in your email app and select your saved ZIP file from **Downloads** (Android) or **Recents/Downloads** (iPhone).
+3. **Return & Clear**:
+   * When you return to PerfiKlose after emailing, a confirmation popup asks if you want to clear the tray for your next batch.
 
 ---
 
 ## Settings ⚙️
-Tap the **Gear Icon** (top right) to adjust compression:
-* **JPEG Quality (10-100%)**: Lower quality means smaller files. 60% is ideal for documents/receipts.
-* **Max Resolution (600-3000px)**: Shrinks huge camera photos down to prevent massive file sizes.
+Tap the **Gear Icon** (top right) to adjust settings:
+* **JPEG Quality (10-80%)**: Defaults to 60%. Lower quality produces smaller file sizes.
+* **Max Resolution (400-1280px)**: Defaults to 800px. Scales down high-megapixel camera photos before compression.
 
 ---
 
-## Tips
-* **Install as App**: Tap **Share $\rightarrow$ Add to Home Screen** (iOS) or **Menu $\rightarrow$ Install app** (Android) for a fullscreen experience.
-* **Offline Use**: Once loaded, you can take and compress photos entirely offline. They are saved securely on your device until you have internet.
-* **Auto-Save**: Closing the browser won't lose your photos. They'll be waiting in the queue when you return.
+## Helpful Tips
+* **Install as an App**: Tap **Share $\rightarrow$ Add to Home Screen** (iOS Safari) or **Menu $\rightarrow$ Install app** (Android Chrome) for a fullscreen app experience.
+* **100% Offline Support**: Works entirely offline in remote areas without cellular service. Your photos are saved locally in your browser until you are ready to share.
+* **Automatic Naming**: Snapping multiple camera shots automatically handles duplicate file names (`image_1.jpg`, `image_2.jpg`) so no photos get overwritten in your ZIP.
