@@ -977,12 +977,7 @@ async function emailZipFlow() {
 
   const mailToUrl =
     'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
-    '&body=' + encodeURIComponent(
-      'Hi,\n\nPlease find the compressed photos saved on your device as:\n' +
-      folderName + '.zip\n\n' +
-      'Tap the 📎 paperclip icon in your email app to attach it before sending.\n\n' +
-      'Sent via PerfiKlose.'
-    );
+    '&body=' + encodeURIComponent('Here are the latest pictures you took, sent via Perfiklose.');
 
   const platformTip = isIOS
     ? 'Your email app will open now. Tap the 📎 paperclip icon and attach "' + folderName + '.zip" from your Recents or Downloads folder.'
