@@ -443,16 +443,16 @@ body {
         <label for="q-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">JPEG Quality</label>
         <span id="q-val" style="color:#4d9fff;font-weight:700;">60%</span>
       </div>
-      <input type="range" id="q-slider" min="0.1" max="1.0" step="0.1" value="0.6" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <input type="range" id="q-slider" min="0.1" max="0.8" step="0.05" value="0.6" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
       <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Lower quality gives smaller file sizes. 60-80% is recommended for receipts and documents.</p>
     </div>
     
     <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);">
       <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;">
         <label for="max-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">Max Resolution</label>
-        <span id="max-val" style="color:#4d9fff;font-weight:700;">1280px</span>
+        <span id="max-val" style="color:#4d9fff;font-weight:700;">800px</span>
       </div>
-      <input type="range" id="max-slider" min="600" max="3000" step="100" value="1280" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <input type="range" id="max-slider" min="400" max="1280" step="50" value="800" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
       <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Reduces image dimensions before compression. Prevents massive file sizes from high-MP cameras.</p>
     </div>
 
@@ -487,8 +487,8 @@ body {
 'use strict';
 
 // ── Settings & Constants ───────────────────────────────────────────────────
-let Q          = parseFloat(localStorage.getItem('perfiKlose_q')) || 0.6;
-let MAX        = parseInt(localStorage.getItem('perfiKlose_max'), 10) || 1280;
+let Q          = Math.min(0.8, parseFloat(localStorage.getItem('perfiKlose_q')) || 0.6);
+let MAX        = Math.min(1280, parseInt(localStorage.getItem('perfiKlose_max'), 10) || 800);
 const MAX_PIXELS = 25_000_000;    // ~25 MP heap-crash prevention threshold
 const STALE_DAYS = 5;             // days before stale batch warning fires
 
