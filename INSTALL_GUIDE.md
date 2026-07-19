@@ -42,6 +42,14 @@ PerfiKlose can be installed as a standalone app on your iPhone or Android phone.
 4. Tap **Add page to** and select **App screen** (or **Home screen**).
 5. Tap **Install**.
 
+### Method 3: Using Microsoft Edge on Android
+1. Open **Microsoft Edge** on your Android device.
+2. Go to the PerfiKlose web address.
+3. Tap the **Menu icon (☰)** in the bottom-right corner of Edge.
+4. Tap **Add to phone** (or **Add to Home screen** / **Install app**).
+5. Tap **Add** (or **Install**) in the confirmation dialog.
+6. The **PerfiKlose** app icon will now appear on your Android Home Screen and App Drawer!
+
 ---
 
 ## 💡 Troubleshooting & Notes
