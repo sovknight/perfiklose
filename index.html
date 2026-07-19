@@ -364,56 +364,55 @@ body {
 
 </main>
 
-<!-- ══ Floating Action Buttons ══ -->
-<div style="position:fixed;bottom:5.75rem;left:0;width:100%;display:flex;justify-content:center;align-items:center;gap:.875rem;padding:0 1.25rem;z-index:40;pointer-events:none;">
-
-  <!-- Take Photo pill -->
-  <label for="cam" class="neon-btn"
-         style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                padding:.875rem 2rem;border-radius:999px;
-                background:#fff;color:#0058bc;
-                font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
-                cursor:pointer;flex:1;max-width:280px;">
-    <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.35rem;">camera</span>
-    Take Photo
-    <input type="file" id="cam" accept="image/*" capture="environment" style="display:none;">
-  </label>
-
-  <!-- Gallery circle -->
-  <label for="gal" class="glass-card"
-         style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
-                width:54px;height:54px;border-radius:50%;
-                cursor:pointer;flex-shrink:0;
-                border:2px solid rgba(255,255,255,.28);
-                transition:transform .1s;
-                box-shadow:0 4px 20px rgba(0,0,0,.35);"
-         onmouseenter="this.style.transform='scale(1.07)'"
-         onmouseleave="this.style.transform='scale(1)'"
-         onmousedown="this.style.transform='scale(.95)'"
-         onmouseup="this.style.transform='scale(1)'">
-    <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.25rem;">grid_view</span>
-    <input type="file" id="gal" accept="image/*" multiple style="display:none;">
-  </label>
-
-</div>
-
-<!-- ══ Bottom Navigation (Floating) ══ -->
-<nav style="position:fixed;bottom:1.5rem;left:0;width:100%;z-index:50;
-            display:flex;justify-content:center;align-items:center;
-            padding:0 1.25rem;
+<!-- ══ Fixed Bottom Dock ══ -->
+<div style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
+            display:flex;flex-direction:column;align-items:center;gap:.75rem;
+            padding:1rem 1.25rem calc(1rem + var(--safe));
+            background:linear-gradient(to top, rgba(0,0,0,.85) 60%, transparent);
             pointer-events:none;">
+
+  <!-- Row 1: Take Photo + Gallery -->
+  <div style="display:flex;justify-content:center;align-items:center;gap:.875rem;width:100%;">
+    <label for="cam" class="neon-btn"
+           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                  padding:.875rem 2rem;border-radius:999px;
+                  background:#fff;color:#0058bc;
+                  font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
+                  cursor:pointer;flex:1;max-width:280px;">
+      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.35rem;">camera</span>
+      Take Photo
+      <input type="file" id="cam" accept="image/*" capture="environment" style="display:none;">
+    </label>
+
+    <label for="gal" class="glass-card"
+           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
+                  width:54px;height:54px;border-radius:50%;
+                  cursor:pointer;flex-shrink:0;
+                  border:2px solid rgba(255,255,255,.28);
+                  transition:transform .1s;
+                  box-shadow:0 4px 20px rgba(0,0,0,.35);"
+           onmouseenter="this.style.transform='scale(1.07)'"
+           onmouseleave="this.style.transform='scale(1)'"
+           onmousedown="this.style.transform='scale(.95)'"
+           onmouseup="this.style.transform='scale(1)'">
+      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.25rem;">grid_view</span>
+      <input type="file" id="gal" accept="image/*" multiple style="display:none;">
+    </label>
+  </div>
+
+  <!-- Row 2: Save & Email -->
   <button id="shareBtn" onclick="saveAndEmailFlow()" class="neon-btn"
           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                 padding:.875rem 0;border-radius:999px;
-                 background:#fff;color:#0058bc;
-                 font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
+                 padding:.75rem 0;border-radius:999px;
+                 background:#0058bc;color:#fff;
+                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
                  border:none;cursor:pointer;font-family:inherit;
-                 flex:1;max-width:320px;
+                 width:100%;max-width:320px;
                  transition:opacity .2s,transform .1s,background-color .2s;">
-    <span class="material-symbols-outlined" style="color:#0058bc;font-size:1.35rem;">send</span>
+    <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">send</span>
     Save &amp; Email
   </button>
-</nav>
+</div>
 
 
 
