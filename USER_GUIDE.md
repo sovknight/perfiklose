@@ -15,16 +15,12 @@ PerfiKlose is a fast, web-based tool to capture photos, compress them into compa
 * **Total Size**: The blue card at the top shows your total batch size and compression ratio.
 
 ## 3. Save & Email Your ZIP
-Sharing is broken into two simple floating actions at the bottom of the screen:
+When you're ready to send, tap the **Save & Email** button at the bottom of the screen:
 
-1. **Tap "Save ZIP"**:
-   * Packages your compressed photos into a single `.zip` file.
-   * A dialog pops up—tap **Download File** to save the ZIP to your phone's Downloads/Files folder.
-2. **Tap "Email ZIP"**:
-   * Opens your default email app with a pre-filled subject and message (*"Here are the latest pictures you took, sent via Perfiklose."*).
-   * Tap the 📎 paperclip icon in your email app and select your saved ZIP file from **Downloads** (Android) or **Recents/Downloads** (iPhone).
-3. **Return & Clear**:
-   * When you return to PerfiKlose after emailing, a confirmation popup asks if you want to clear the tray for your next batch.
+1. A dialog appears — tap **Download & Continue** to save the ZIP file to your phone.
+2. A second dialog appears — tap **Open Email App** to launch your email client with a pre-filled subject and message.
+3. In your email app, tap the 📎 paperclip icon and select the ZIP file from **Downloads** (Android) or **Recents/Downloads** (iPhone).
+4. Send your email! When you return to PerfiKlose, a confirmation popup asks if you want to clear the tray for your next batch.
 
 ---
 
