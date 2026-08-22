@@ -244,38 +244,25 @@ body {
     <div style="position:relative;width:100%;">
       <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;display:block;"></video>
       
-      <!-- Floating Recent Thumbnail Bubble (Tap to Review) -->
+      <!-- Floating Recent Thumbnail & Batch Info (Tap to Review) -->
       <div id="cam-thumb-bubble" onclick="openReviewDrawer()" 
-           style="position:absolute;bottom:12px;left:12px;display:none;align-items:center;gap:.5rem;background:rgba(0,0,0,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.28);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:10;cursor:pointer;transition:transform .1s;"
+           style="position:absolute;bottom:12px;left:12px;display:none;align-items:center;gap:.6rem;background:rgba(0,0,0,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.28);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:10;cursor:pointer;transition:transform .1s;"
            onmouseenter="this.style.transform='scale(1.05)'"
            onmouseleave="this.style.transform='scale(1)'"
            onmousedown="this.style.transform='scale(.95)'"
            onmouseup="this.style.transform='scale(1)'"
-           title="Tap to review photos">
-        <img id="cam-thumb-img" src="" alt="Last shot" style="width:38px;height:38px;border-radius:10px;object-fit:cover;background:#222;display:block;">
-        <div style="display:flex;flex-direction:column;">
-          <span id="cam-thumb-count" style="font-size:.85rem;font-weight:700;color:#fff;line-height:1.1;">0</span>
-          <span style="font-size:.55rem;color:rgba(255,255,255,.65);text-transform:uppercase;font-weight:600;letter-spacing:.05em;">Review</span>
+           title="Tap to review batch">
+        <img id="cam-thumb-img" src="" alt="Last shot" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#222;display:block;">
+        <div style="display:flex;flex-direction:column;gap:.1rem;">
+          <div style="display:flex;align-items:baseline;gap:.35rem;">
+            <span id="cam-thumb-count" style="font-size:.85rem;font-weight:700;color:#fff;line-height:1.1;">0 Photos</span>
+            <span id="cam-thumb-size" style="font-size:.72rem;font-weight:700;color:#93c5fd;">0 B</span>
+          </div>
+          <span style="font-size:.55rem;color:rgba(255,255,255,.65);text-transform:uppercase;font-weight:600;letter-spacing:.06em;">Tap to Review</span>
         </div>
       </div>
     </div>
     <canvas id="capture-canvas" style="display:none;"></canvas>
-  </section>
-
-  <!-- ── Simplified Status Pill (Tap to Review) ── -->
-  <section id="status-pill" onclick="openReviewDrawer()" class="hero-card" 
-           style="border-radius:999px;padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 20px rgba(0,88,188,0.2);cursor:pointer;transition:transform .1s;"
-           onmouseenter="this.style.transform='scale(1.02)'"
-           onmouseleave="this.style.transform='scale(1)'"
-           title="Tap to review photos">
-    <div style="display:flex;align-items:center;gap:.55rem;">
-      <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.25rem;">bolt</span>
-      <span id="pill-text" style="font-size:.85rem;font-weight:700;color:#fff;letter-spacing:.02em;">0 Photos</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:.5rem;">
-      <span id="pill-size" style="font-size:.8rem;font-weight:700;color:#93c5fd;background:rgba(0,88,188,.3);padding:.2rem .7rem;border-radius:999px;border:1px solid rgba(147,197,253,.25);">0 B</span>
-      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.5);font-size:1.1rem;">chevron_right</span>
-    </div>
   </section>
 
 </main>
@@ -629,29 +616,17 @@ function render() {
   });
 
   const sp = fmtSzParts(totalComp);
-  const pillText = $('pill-text');
-  const pillSize = $('pill-size');
-  if (pillText) {
-    if (n === 0) {
-      pillText.textContent = '0 Photos';
-    } else if (anyQueued) {
-      pillText.textContent = `${n} Photo${n > 1 ? 's' : ''} (Optimizing…)`;
-    } else {
-      pillText.textContent = `⚡ ${n} Photo${n > 1 ? 's' : ''} (Ready to Send)`;
-    }
-  }
-  if (pillSize) {
-    pillSize.textContent = sp.num + ' ' + sp.unit;
-  }
 
-  // Update floating camera thumbnail bubble
+  // Update floating camera thumbnail bubble with photo count & total size
   const thumbBubble = $('cam-thumb-bubble');
   const thumbImg    = $('cam-thumb-img');
   const thumbCount  = $('cam-thumb-count');
-  if (thumbBubble && thumbImg && thumbCount) {
+  const thumbSize   = $('cam-thumb-size');
+  if (thumbBubble && thumbImg && thumbCount && thumbSize) {
     if (n > 0) {
       thumbBubble.style.display = 'flex';
-      thumbCount.textContent = n;
+      thumbCount.textContent = anyQueued ? `${n} (Saving…)` : `${n} Photo${n > 1 ? 's' : ''}`;
+      thumbSize.textContent = sp.num + ' ' + sp.unit;
       const lastReady = [...photos].reverse().find(p => p.url);
       if (lastReady && lastReady.url) {
         thumbImg.src = lastReady.url;
