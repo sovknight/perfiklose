@@ -241,56 +241,28 @@ body {
   
   <!-- ── In-App Camera Viewfinder ── -->
   <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.5rem;display:flex;flex-direction:column;align-items:center;background:#000;">
-    <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;"></video>
+    <div style="position:relative;width:100%;">
+      <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;display:block;"></video>
+      
+      <!-- Floating Recent Thumbnail Bubble -->
+      <div id="cam-thumb-bubble" style="position:absolute;bottom:12px;left:12px;display:none;align-items:center;gap:.45rem;background:rgba(0,0,0,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.25);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:10;">
+        <img id="cam-thumb-img" src="" alt="Last shot" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:#222;display:block;">
+        <div style="display:flex;flex-direction:column;">
+          <span id="cam-thumb-count" style="font-size:.8rem;font-weight:700;color:#fff;line-height:1.1;">0</span>
+          <span style="font-size:.55rem;color:rgba(255,255,255,.6);text-transform:uppercase;font-weight:600;letter-spacing:.05em;">Photos</span>
+        </div>
+      </div>
+    </div>
     <canvas id="capture-canvas" style="display:none;"></canvas>
   </section>
 
-  <!-- ── Hero Stats Card ── -->
-  <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.75rem 1rem .6rem;">
-    <!-- Decorative blob -->
-    <div style="position:absolute;right:-24px;top:-24px;width:120px;height:120px;background:rgba(255,255,255,.08);border-radius:50%;filter:blur(30px);pointer-events:none;"></div>
-
-    <div style="position:relative;z-index:1;">
-      <!-- Stats Row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
-        <div>
-          <p style="color:rgba(255,255,255,.6);font-size:.55rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.1rem;">Total Size</p>
-          <div style="display:flex;align-items:baseline;gap:.15rem;">
-            <span id="hero-num"
-                  style="font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:700;font-size:1.85rem;color:#fff;line-height:1;">
-              0
-            </span>
-            <span id="hero-unit" style="font-weight:700;font-size:.75rem;color:rgba(255,255,255,.8);">B</span>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:.75rem;border-left:1px solid rgba(255,255,255,.15);padding-left:.75rem;">
-          <div style="text-align:center;">
-            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Ratio</p>
-            <p id="hero-ratio" style="color:#fff;font-weight:700;font-size:.8rem;white-space:nowrap;">—</p>
-          </div>
-          <div style="text-align:center;">
-            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Quality</p>
-            <p id="hero-quality" style="color:#fff;font-weight:700;font-size:.8rem;">60%</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Progress Bar -->
-      <div style="margin-top:.45rem;height:6px;width:100%;background:rgba(0,0,0,.3);border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
-        <div id="hero-progress"
-             style="height:100%;width:0%;border-radius:999px;transition:width .55s cubic-bezier(.4,0,.2,1);
-                    background:linear-gradient(90deg,#fff 0%,#00d4ff 100%);
-                    box-shadow:0 0 8px rgba(0,212,255,.55);">
-        </div>
-      </div>
-
-      <!-- Footer Labels -->
-      <div style="display:flex;justify-content:space-between;margin-top:.25rem;padding:0 .05rem;">
-        <span style="color:rgba(255,255,255,.6);font-weight:700;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;">Optimized</span>
-        <span id="hero-recovery" style="color:#fff;font-weight:700;font-size:.55rem;">0% Recovery</span>
-      </div>
+  <!-- ── Simplified Status Pill ── -->
+  <section id="status-pill" class="hero-card" style="border-radius:999px;padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 20px rgba(0,88,188,0.2);">
+    <div style="display:flex;align-items:center;gap:.55rem;">
+      <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.25rem;">bolt</span>
+      <span id="pill-text" style="font-size:.85rem;font-weight:700;color:#fff;letter-spacing:.02em;">0 Photos</span>
     </div>
+    <span id="pill-size" style="font-size:.8rem;font-weight:700;color:#93c5fd;background:rgba(0,88,188,.3);padding:.2rem .7rem;border-radius:999px;border:1px solid rgba(147,197,253,.25);">0 B</span>
   </section>
 
   <!-- ── Processing Queue ── -->
@@ -409,8 +381,21 @@ body {
       <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:2rem;">camera</span>
     </button>
 
-    <!-- Visual balancer to keep shutter centered -->
-    <div style="width:52px;height:52px;opacity:0;pointer-events:none;"></div>
+    <!-- Camera Switcher Button -->
+    <button id="flipCamBtn" onclick="toggleCamera()" class="glass-card"
+           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
+                  width:52px;height:52px;border-radius:50%;
+                  cursor:pointer;flex-shrink:0;
+                  border:2px solid rgba(255,255,255,.25);
+                  transition:transform .1s;
+                  box-shadow:0 4px 20px rgba(0,0,0,.35);"
+           title="Switch Camera"
+           onmouseenter="this.style.transform='scale(1.07)'"
+           onmouseleave="this.style.transform='scale(1)'"
+           onmousedown="this.style.transform='scale(.95)'"
+           onmouseup="this.style.transform='scale(1)'">
+      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.35rem;">flip_camera_ios</span>
+    </button>
   </div>
 
   <!-- Row 2: Export Dock -->
@@ -505,6 +490,7 @@ let queue       = [];   // Pending compression jobs
 let busy        = false;
 let swReg       = null; // Service worker registration handle
 let videoStream = null;
+let currentFacingMode = "environment";
 let folderName  = '';
 let waitingForEmailReturn = false;
 
@@ -679,15 +665,38 @@ function render() {
     else { totalComp += p.origSz; }
   });
 
-  const saved   = Math.max(0, totalOrig - totalComp);
-  const savePct = totalOrig > 0 ? Math.round(saved / totalOrig * 100) : 0;
-  const ratio   = totalComp > 0 && totalOrig > 0 ? (totalOrig / totalComp).toFixed(1) + ':1' : '—';
   const sp = fmtSzParts(totalComp);
-  if ($('hero-num')) $('hero-num').textContent      = sp.num;
-  if ($('hero-unit')) $('hero-unit').textContent     = sp.unit;
-  if ($('hero-ratio')) $('hero-ratio').textContent    = ratio;
-  if ($('hero-progress')) $('hero-progress').style.width = Math.min(savePct, 100) + '%';
-  if ($('hero-recovery')) $('hero-recovery').textContent = savePct + '% Recovery';
+  const pillText = $('pill-text');
+  const pillSize = $('pill-size');
+  if (pillText) {
+    if (n === 0) {
+      pillText.textContent = '0 Photos';
+    } else if (anyQueued) {
+      pillText.textContent = `${n} Photo${n > 1 ? 's' : ''} (Optimizing…)`;
+    } else {
+      pillText.textContent = `⚡ ${n} Photo${n > 1 ? 's' : ''} (Ready to Send)`;
+    }
+  }
+  if (pillSize) {
+    pillSize.textContent = sp.num + ' ' + sp.unit;
+  }
+
+  // Update floating camera thumbnail bubble
+  const thumbBubble = $('cam-thumb-bubble');
+  const thumbImg    = $('cam-thumb-img');
+  const thumbCount  = $('cam-thumb-count');
+  if (thumbBubble && thumbImg && thumbCount) {
+    if (n > 0) {
+      thumbBubble.style.display = 'flex';
+      thumbCount.textContent = n;
+      const lastReady = [...photos].reverse().find(p => p.url);
+      if (lastReady && lastReady.url) {
+        thumbImg.src = lastReady.url;
+      }
+    } else {
+      thumbBubble.style.display = 'none';
+    }
+  }
 
   const saveBtn = $('saveZipBtn');
   if (saveBtn) {
@@ -761,6 +770,15 @@ async function runQueue() {
 }
 
 // ── Camera (V2) ────────────────────────────────────────────────────────────
+async function toggleCamera() {
+  currentFacingMode = (currentFacingMode === 'environment' ? 'user' : 'environment');
+  const btn = $('flipCamBtn');
+  if (btn) btn.style.transform = 'rotate(180deg)';
+  setTimeout(() => { if (btn) btn.style.transform = 'none'; }, 250);
+  await startCamera();
+}
+window.toggleCamera = toggleCamera;
+
 async function startCamera() {
   const video = $('viewfinder');
   if (!video) return;
@@ -770,7 +788,7 @@ async function startCamera() {
     }
     const constraints = {
       video: {
-        facingMode: 'environment',
+        facingMode: currentFacingMode,
         width: { ideal: 1920 },
         height: { ideal: 1080 }
       },
@@ -786,6 +804,9 @@ async function startCamera() {
 }
 
 function takePhoto() {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(40); } catch(e) {}
+  }
   const video = $('viewfinder');
   const canvas = $('capture-canvas');
   if (!video || !canvas) return;
