@@ -236,7 +236,7 @@ body {
 </header>
 
 <!-- ══ Main Content ══ -->
-<main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:210px;display:flex;flex-direction:column;gap:1.25rem;">
+<main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:150px;display:flex;flex-direction:column;gap:1.25rem;">
 
   
   <!-- ── In-App Camera Viewfinder ── -->
@@ -244,101 +244,37 @@ body {
     <div style="position:relative;width:100%;">
       <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;display:block;"></video>
       
-      <!-- Floating Recent Thumbnail Bubble -->
-      <div id="cam-thumb-bubble" style="position:absolute;bottom:12px;left:12px;display:none;align-items:center;gap:.45rem;background:rgba(0,0,0,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.25);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:10;">
-        <img id="cam-thumb-img" src="" alt="Last shot" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:#222;display:block;">
+      <!-- Floating Recent Thumbnail Bubble (Tap to Review) -->
+      <div id="cam-thumb-bubble" onclick="openReviewDrawer()" 
+           style="position:absolute;bottom:12px;left:12px;display:none;align-items:center;gap:.5rem;background:rgba(0,0,0,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.28);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:10;cursor:pointer;transition:transform .1s;"
+           onmouseenter="this.style.transform='scale(1.05)'"
+           onmouseleave="this.style.transform='scale(1)'"
+           onmousedown="this.style.transform='scale(.95)'"
+           onmouseup="this.style.transform='scale(1)'"
+           title="Tap to review photos">
+        <img id="cam-thumb-img" src="" alt="Last shot" style="width:38px;height:38px;border-radius:10px;object-fit:cover;background:#222;display:block;">
         <div style="display:flex;flex-direction:column;">
-          <span id="cam-thumb-count" style="font-size:.8rem;font-weight:700;color:#fff;line-height:1.1;">0</span>
-          <span style="font-size:.55rem;color:rgba(255,255,255,.6);text-transform:uppercase;font-weight:600;letter-spacing:.05em;">Photos</span>
+          <span id="cam-thumb-count" style="font-size:.85rem;font-weight:700;color:#fff;line-height:1.1;">0</span>
+          <span style="font-size:.55rem;color:rgba(255,255,255,.65);text-transform:uppercase;font-weight:600;letter-spacing:.05em;">Review</span>
         </div>
       </div>
     </div>
     <canvas id="capture-canvas" style="display:none;"></canvas>
   </section>
 
-  <!-- ── Simplified Status Pill ── -->
-  <section id="status-pill" class="hero-card" style="border-radius:999px;padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 20px rgba(0,88,188,0.2);">
+  <!-- ── Simplified Status Pill (Tap to Review) ── -->
+  <section id="status-pill" onclick="openReviewDrawer()" class="hero-card" 
+           style="border-radius:999px;padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 20px rgba(0,88,188,0.2);cursor:pointer;transition:transform .1s;"
+           onmouseenter="this.style.transform='scale(1.02)'"
+           onmouseleave="this.style.transform='scale(1)'"
+           title="Tap to review photos">
     <div style="display:flex;align-items:center;gap:.55rem;">
       <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.25rem;">bolt</span>
       <span id="pill-text" style="font-size:.85rem;font-weight:700;color:#fff;letter-spacing:.02em;">0 Photos</span>
     </div>
-    <span id="pill-size" style="font-size:.8rem;font-weight:700;color:#93c5fd;background:rgba(0,88,188,.3);padding:.2rem .7rem;border-radius:999px;border:1px solid rgba(147,197,253,.25);">0 B</span>
-  </section>
-
-  <!-- ── Processing Queue ── -->
-  <section>
-    <!-- Queue Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem;padding:0 .125rem;">
-      <h2 style="font-weight:700;font-size:1.05rem;letter-spacing:.09em;text-transform:uppercase;color:#fff;">Processing Queue</h2>
-      <div style="display:flex;align-items:center;gap:.5rem;">
-        <span id="cnt"
-              style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
-                     padding:.2rem .75rem;border-radius:999px;font-weight:700;font-size:.68rem;color:#fff;">
-          0 Items
-        </span>
-        <button id="clr" onclick="clearAll()"
-                style="display:none;align-items:center;gap:.25rem;
-                       background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);
-                       color:#fca5a5;padding:.2rem .65rem;border-radius:999px;
-                       font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;">
-          ✕ Clear
-        </button>
-      </div>
-    </div>
-
-    <!-- Glass Queue Card -->
-    <div class="glass-card" style="border-radius:24px;min-height:340px;display:flex;flex-direction:column;overflow:hidden;">
-
-      <!-- Empty State -->
-      <div id="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:2.5rem 1.5rem;text-align:center;gap:1.25rem;">
-
-        <!-- Animated rings + camera icon -->
-        <div style="position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center;">
-          <!-- Outer ring -->
-          <div class="ring-cw"
-               style="position:absolute;inset:0;border-radius:50%;
-                      border:2.5px dashed rgba(0,88,188,.38);">
-          </div>
-          <!-- Middle ring -->
-          <div class="ring-ccw"
-               style="position:absolute;inset:14px;border-radius:50%;
-                      border:2px dashed rgba(0,88,188,.2);">
-          </div>
-          <!-- Inner circle + icon -->
-          <div class="float-anim"
-               style="position:relative;width:98px;height:98px;
-                      background:rgba(255,255,255,.05);
-                      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-                      border-radius:50%;border:3px solid rgba(0,100,220,.65);
-                      display:flex;align-items:center;justify-content:center;
-                      animation:float-up 3.5s ease-in-out infinite,pulse-ring 3s ease-in-out infinite;">
-            <span class="material-symbols-outlined filled"
-                  style="color:#4d9fff;font-size:3rem;">photo_camera</span>
-            <!-- ZIP Badge -->
-            <div style="position:absolute;bottom:-5px;right:-12px;
-                        background:#fff;border-radius:10px;padding:.2rem .3rem;
-                        border:2px solid rgba(0,88,188,.5);
-                        box-shadow:0 2px 10px rgba(0,0,0,.5);
-                        transform:rotate(8deg);">
-              <span class="material-symbols-outlined"
-                    style="color:#0058bc;font-size:1.05rem;display:block;line-height:1;">
-                gif_box
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Text -->
-        <div>
-          <h3 style="color:#fff;font-weight:700;font-size:1.2rem;letter-spacing:.1em;text-transform:uppercase;">
-            Queue Empty
-          </h3>
-        </div>
-      </div>
-
-      <!-- Photo Grid (injected by render()) -->
-      <div id="grid"></div>
-
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <span id="pill-size" style="font-size:.8rem;font-weight:700;color:#93c5fd;background:rgba(0,88,188,.3);padding:.2rem .7rem;border-radius:999px;border:1px solid rgba(147,197,253,.25);">0 B</span>
+      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.5);font-size:1.1rem;">chevron_right</span>
     </div>
   </section>
 
@@ -421,6 +357,33 @@ body {
   </div>
 </div>
 
+
+<!-- ══ Batch Review Drawer Modal ══ -->
+<div class="modal-backdrop" id="review-modal" onclick="if(event.target===this) closeReviewDrawer()">
+  <div class="modal-panel glass-card" style="max-height:80vh;overflow-y:auto;border-radius:28px 28px 0 0;padding:1.5rem 1.25rem calc(1.5rem + var(--safe));">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;gap:.6rem;">
+        <h2 style="font-weight:700;font-size:1.2rem;letter-spacing:.02em;color:#fff;">Batch Review</h2>
+        <span id="cnt" style="background:rgba(255,255,255,.12);padding:.2rem .65rem;border-radius:999px;font-size:.7rem;font-weight:700;color:#fff;">0 Items</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.6rem;">
+        <button id="clr" onclick="clearAll()" style="display:none;align-items:center;gap:.25rem;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.3rem .75rem;border-radius:999px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+          ✕ Clear All
+        </button>
+        <button onclick="closeReviewDrawer()" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center;gap:.75rem;">
+      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.3);font-size:3rem;">photo_library</span>
+      <p style="color:rgba(255,255,255,.6);font-size:.9rem;font-weight:600;">No photos in this batch yet</p>
+    </div>
+
+    <!-- Photo Grid (injected by render()) -->
+    <div id="grid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:.6rem;padding:.25rem 0;"></div>
+  </div>
+</div>
 
 <!-- ══ Settings Modal ══ -->
 <div class="modal-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
@@ -967,6 +930,20 @@ window.clearAll = () => {
   render();
   toast('Tray reset for next batch');
 };
+
+
+// ── Review Drawer Controls ────────────────────────────────────────────────
+function openReviewDrawer() {
+  const m = $('review-modal');
+  if (m) m.classList.add('show');
+}
+window.openReviewDrawer = openReviewDrawer;
+
+function closeReviewDrawer() {
+  const m = $('review-modal');
+  if (m) m.classList.remove('show');
+}
+window.closeReviewDrawer = closeReviewDrawer;
 
 // ── Settings ───────────────────────────────────────────────────────────────
 function showSettings() {
