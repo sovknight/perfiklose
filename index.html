@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PerfiKlose — Compress &amp; Share</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
 <meta name="description" content="Snap, compress &amp; share photos effortlessly. Zero install.">
 <link rel="manifest" href="manifest.json">
@@ -478,38 +479,53 @@ const MAX_PIXELS = 25_000_000;    // ~25 MP heap-crash prevention threshold
 const STALE_DAYS = 5;             // days before stale batch warning fires
 
 // ── State ──────────────────────────────────────────────────────────────────
-let photos   = [];   // Array of photo objects
-let queue    = [];   // Pending compression jobs
-let busy     = false;
-let swReg    = null; // Service worker registration handle
-const $ = id => document.getElementById(id);
+let photos      = [];   // Array of photo objects
+let queue       = [];   // Pending compression jobs
+let busy        = false;
+let swReg       = null; // Service worker registration handle
+let videoStream = null;
+let folderName  = '';
+let waitingForEmailReturn = false;
 
-// ── Glow Orb Parallax (throttled with rAF) ────────────────────────────────
-{
-  let _rafPending = false;
-  let _ex = 0, _ey = 0;
-  window.addEventListener('mousemove', e => {
-    _ex = e.pageX; _ey = e.pageY;
-    if (_rafPending) return;
-    _rafPending = true;
-    requestAnimationFrame(() => {
-      const orb = $('glow-orb');
-      if (orb) {
-        const x = (window.innerWidth  / 2 - _ex) / 28;
-        const y = (window.innerHeight / 2 - _ey) / 28;
-        orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
-      }
-      _rafPending = false;
-    });
-  }, { passive: true });
+const $ = id => document.getElementById(id);
+const cardMap    = new Map(); // id → DOM node
+const cardStatus = new Map(); // id → last rendered status
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── IndexedDB — singleton cached connection ────────────────────────────────
+function fmtSzParts(b) {
+  if (!b || b <= 0) return { num: '0', unit: 'B' };
+  const u = ['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
+  return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
+}
+
+function fmtSz(b) {
+  const p = fmtSzParts(b);
+  return p.num + ' ' + p.unit;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, type) {
+  const t = $('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── IndexedDB ──────────────────────────────────────────────────────────────
 const DB_NAME = 'PerfiKloseDB';
 const STORE   = 'photos';
 const DB_VER  = 2;
-
 let _dbPromise = null;
+
 function getDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
@@ -565,7 +581,6 @@ async function dbLoadAll() {
 }
 
 // ── Folder Naming ──────────────────────────────────────────────────────────
-let folderName = '';
 function newFolder() {
   const d = new Date();
   folderName = `Photos_${d.toISOString().slice(0,10)}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
@@ -573,210 +588,28 @@ function newFolder() {
   localStorage.setItem('perfiKlose_savedAt',    Date.now());
 }
 
-// ── Startup ────────────────────────────────────────────────────────────────
-$('hero-quality').textContent = Math.round(Q * 100) + '%';
-
-folderName = localStorage.getItem('perfiKlose_folderName');
-if (!folderName) newFolder();
-
-// Migration: seed savedAt for existing users who don't have it yet
-if (folderName && !localStorage.getItem('perfiKlose_savedAt')) {
-  localStorage.setItem('perfiKlose_savedAt', Date.now());
-}
-
-dbLoadAll().then(list => {
-  photos = list;
-  render();
-  // Stale batch warning (Fix #5)
-  if (list.length > 0) {
-    const savedAt = parseInt(localStorage.getItem('perfiKlose_savedAt') || '0', 10);
-    const daysOld = savedAt ? (Date.now() - savedAt) / 86_400_000 : 0;
-    if (daysOld >= STALE_DAYS) {
-      const d = Math.floor(daysOld), n = list.length;
-      $('stale-msg').textContent = `You have ${n} unsent photo${n > 1 ? 's' : ''} from ${d} day${d > 1 ? 's' : ''} ago — share or clear them soon.`;
-      $('stale-banner').classList.add('show');
-    }
-  }
-});
-
-let waitingForEmailReturn = false; // Tracks if user went to email app
-
-// ── Page Visibility API (Fix #1 + Email Return Confirmation) ───────────────
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if (queue.length > 0 || busy) $('lock-banner').classList.add('show');
-  } else {
-    $('lock-banner').classList.remove('show');
-    if (!busy && queue.length > 0) runQueue(); // resume if stalled
-    
-    // Check if returning from Email app
-    if (waitingForEmailReturn) {
-      waitingForEmailReturn = false;
-      setTimeout(() => {
-        showDialog({
-          title: '✉️ Email Sent!',
-          msg: 'Did you finish sending your email? Tap Clear Tray to reset for your next batch.',
-          okText: 'Clear Tray',
-          cancelText: 'Keep Batch',
-          onOk: () => clearAll()
-        });
-      }, 400);
-    }
-  }
-});
-
-// ── File Input Handler ─────────────────────────────────────────────────────
-function handleFiles(e) {
-  const files = [...e.target.files];
-  e.target.value = ''; // allow re-selecting the same file
-  const existingNames = new Set(photos.map(p => p.name));
-
-  files.forEach(f => {
-    if (!f.type.startsWith('image/')) return;
-    let raw = f.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const dot = raw.lastIndexOf('.');
-    let base = (dot > -1 ? raw.slice(0, dot) : raw);
-
-    let n = base + '.jpg';
-    let counter = 1;
-    while (existingNames.has(n)) {
-      n = `${base}_${counter}.jpg`;
-      counter++;
-    }
-    existingNames.add(n);
-
-    const p = {
-      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      name:   n,
-      origSz: f.size,
-      compSz: 0,
-      blob:   f,
-      comp:   null,
-      url:    '',
-      status: 'q'
-    };
-    photos.push(p);
-    queue.push(p);
-  });
-  render();
-  runQueue();
-}
-$('cam').onchange       = handleFiles;
-$('gal').onchange       = handleFiles;
-
-// ── Sequential Compression Queue ───────────────────────────────────────────
-async function runQueue() {
-  if (busy || !queue.length) return;
-  busy = true;
-  const p = queue.shift();
-  try { await compress(p); } catch (e) { p.status = 'err'; console.error('compress', e); }
-  busy = false;
-  if (!queue.length) $('lock-banner').classList.remove('show');
-  runQueue(); // tail-call next item
-}
-
-// ── Two-Pass Downscale for Ultra-High-MP Images (Fix #2) ──────────────────
-function safeDrawImage(img, ctx, w, h) {
-  const srcPixels = img.naturalWidth * img.naturalHeight;
-  if (srcPixels > MAX_PIXELS) {
-    // Pre-scale on intermediate canvas to avoid GPU/heap spike
-    const scale = Math.sqrt(MAX_PIXELS / srcPixels);
-    const iw    = Math.round(img.naturalWidth  * scale);
-    const ih    = Math.round(img.naturalHeight * scale);
-    const tmp   = document.createElement('canvas');
-    tmp.width = iw; tmp.height = ih;
-    tmp.getContext('2d').drawImage(img, 0, 0, iw, ih);
-    ctx.drawImage(tmp, 0, 0, w, h);
-    tmp.width = tmp.height = 0; // release memory
-  } else {
-    ctx.drawImage(img, 0, 0, w, h);
-  }
-}
-
-function compress(p) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onerror = () => { p.status = 'err'; render(); resolve(); };
-    reader.onload  = () => {
-      const img = new Image();
-      img.onerror = () => { p.status = 'err'; render(); resolve(); };
-      img.onload  = () => {
-        let w = img.naturalWidth, h = img.naturalHeight;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * (MAX / w)); w = MAX; }
-          else       { w = Math.round(w * (MAX / h)); h = MAX; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        safeDrawImage(img, canvas.getContext('2d'), w, h);
-        canvas.toBlob(blob => {
-          canvas.width = canvas.height = 0; // release GPU memory immediately
-          if (!blob) { p.status = 'err'; render(); resolve(); return; }
-          p.comp   = blob;
-          p.compSz = blob.size;
-          p.url    = URL.createObjectURL(blob);
-          p.status = 'ok';
-          p.blob   = null; // release original file reference
-          dbSave(p);
-          render();
-          resolve();
-        }, 'image/jpeg', Q);
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(p.blob);
-  });
-}
-
-// ── Delete / Clear ─────────────────────────────────────────────────────────
-window.del = id => {
-  const i = photos.findIndex(p => p.id === id);
-  if (i > -1) {
-    if (photos[i].url) URL.revokeObjectURL(photos[i].url);
-    photos.splice(i, 1);
-    dbDelete(id);
-    render();
-  }
-};
-
-window.clearAll = () => {
-  photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
-  photos = []; queue = []; busy = false;
-  $('stale-banner').classList.remove('show');
-  dbClear();
-  newFolder();
-  render();
-  toast('Tray reset for next batch');
-};
-
-// ── Render — Incremental DOM Diff ─────────────────────────────────────────
-const cardMap    = new Map(); // id → DOM node
-const cardStatus = new Map(); // id → last rendered status (skip unnecessary innerHTML sets)
-
+// ── Render ─────────────────────────────────────────────────────────────────
 function render() {
   const grid = $('grid');
+  if (!grid) return;
   const n    = photos.length;
 
-  // Header badge + visibility
-  $('cnt').textContent     = n > 0 ? `${n} Item${n > 1 ? 's' : ''}` : '0 Items';
-  $('clr').style.display   = n ? 'inline-flex' : 'none';
-  $('empty').style.display = n ? 'none' : 'flex';
+  if ($('cnt')) $('cnt').textContent     = n > 0 ? `${n} Item${n > 1 ? 's' : ''}` : '0 Items';
+  if ($('clr')) $('clr').style.display   = n ? 'inline-flex' : 'none';
+  if ($('empty')) $('empty').style.display = n ? 'none' : 'flex';
   grid.style.display       = n ? 'grid' : 'none';
 
-  // Remove cards for deleted photos — collect first, then delete (avoids mutating during iteration)
-  const currentIds = new Set(photos.map(p => p.id)); // O(1) lookup
+  const currentIds = new Set(photos.map(p => p.id));
   const toRemove = [];
   for (const [id, node] of cardMap) {
     if (!currentIds.has(id)) toRemove.push(id);
   }
   toRemove.forEach(id => { cardMap.get(id).remove(); cardMap.delete(id); cardStatus.delete(id); });
 
-  // Update or insert cards, maintaining array order
   photos.forEach((p, idx) => {
     let card = cardMap.get(p.id);
     if (!card) { card = document.createElement('div'); cardMap.set(p.id, card); }
 
-    // Only rebuild innerHTML when status actually changed (optimization: avoids layout thrash)
     if (cardStatus.get(p.id) !== p.status) {
       cardStatus.set(p.id, p.status);
       card.className = 'card' + (p.status === 'q' ? ' loading' : '');
@@ -813,92 +646,110 @@ function render() {
       }
     }
 
-    // Keep DOM order in sync with photos array
     const ref = grid.children[idx];
     if (ref !== card) grid.insertBefore(card, ref || null);
   });
 
-  // ── Compute totals (single O(n) pass) ──
   let totalOrig = 0, totalComp = 0, anyReady = false, anyQueued = false;
   photos.forEach(p => {
     totalOrig += p.origSz;
     if (p.status === 'ok') { totalComp += p.compSz; anyReady = true; }
     else if (p.status === 'q') { totalComp += p.origSz; anyQueued = true; }
-    else { totalComp += p.origSz; } // err photos count toward size but not readiness
+    else { totalComp += p.origSz; }
   });
 
-  // ── Update Hero Stats ──
   const saved   = Math.max(0, totalOrig - totalComp);
   const savePct = totalOrig > 0 ? Math.round(saved / totalOrig * 100) : 0;
-  const ratio   = totalComp > 0 && totalOrig > 0
-    ? (totalOrig / totalComp).toFixed(1) + ':1'
-    : '—';
+  const ratio   = totalComp > 0 && totalOrig > 0 ? (totalOrig / totalComp).toFixed(1) + ':1' : '—';
   const sp = fmtSzParts(totalComp);
-  $('hero-num').textContent      = sp.num;
-  $('hero-unit').textContent     = sp.unit;
-  $('hero-ratio').textContent    = ratio;
-  $('hero-progress').style.width = Math.min(savePct, 100) + '%';
-  $('hero-recovery').textContent = savePct + '% Recovery';
+  if ($('hero-num')) $('hero-num').textContent      = sp.num;
+  if ($('hero-unit')) $('hero-unit').textContent     = sp.unit;
+  if ($('hero-ratio')) $('hero-ratio').textContent    = ratio;
+  if ($('hero-progress')) $('hero-progress').style.width = Math.min(savePct, 100) + '%';
+  if ($('hero-recovery')) $('hero-recovery').textContent = savePct + '% Recovery';
 
-  // ── Share button state ──
-  const canShare = anyReady && !anyQueued;
-  $('shareBtn').disabled = !canShare;
-  $('shareBtn').style.opacity = canShare ? '1' : '0.38';
-  $('shareBtn').style.cursor = canShare ? 'pointer' : 'not-allowed';
-  if (canShare) {
-    $('shareBtn').classList.add('neon-btn');
-  } else {
-    $('shareBtn').classList.remove('neon-btn');
-    $('shareBtn').style.transform = 'scale(1)';
+  const saveBtn = $('saveZipBtn');
+  if (saveBtn) {
+    const canSave = anyReady && !anyQueued;
+    saveBtn.disabled = !canSave;
+    saveBtn.style.opacity = canSave ? '1' : '0.4';
+    saveBtn.style.cursor = canSave ? 'pointer' : 'not-allowed';
   }
 }
 
-// ── Utilities ──────────────────────────────────────────────────────────────
-function esc(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── Compression Queue ──────────────────────────────────────────────────────
+function safeDrawImage(img, ctx, w, h) {
+  const srcPixels = img.naturalWidth * img.naturalHeight;
+  if (srcPixels > MAX_PIXELS) {
+    const scale = Math.sqrt(MAX_PIXELS / srcPixels);
+    const iw    = Math.round(img.naturalWidth  * scale);
+    const ih    = Math.round(img.naturalHeight * scale);
+    const tmp   = document.createElement('canvas');
+    tmp.width = iw; tmp.height = ih;
+    tmp.getContext('2d').drawImage(img, 0, 0, iw, ih);
+    ctx.drawImage(tmp, 0, 0, w, h);
+    tmp.width = tmp.height = 0;
+  } else {
+    ctx.drawImage(img, 0, 0, w, h);
+  }
 }
 
-// Single implementation — fmtSz calls fmtSzParts (deduplication)
-function fmtSzParts(b) {
-  if (!b || b <= 0) return { num: '0', unit: 'B' };
-  const u = ['B','KB','MB','GB'];
-  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
-  return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
+function compress(p) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onerror = () => { p.status = 'err'; render(); resolve(); };
+    reader.onload  = () => {
+      const img = new Image();
+      img.onerror = () => { p.status = 'err'; render(); resolve(); };
+      img.onload  = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * (MAX / w)); w = MAX; }
+          else       { w = Math.round(w * (MAX / h)); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        safeDrawImage(img, canvas.getContext('2d'), w, h);
+        canvas.toBlob(blob => {
+          canvas.width = canvas.height = 0;
+          if (!blob) { p.status = 'err'; render(); resolve(); return; }
+          p.comp   = blob;
+          p.compSz = blob.size;
+          p.url    = URL.createObjectURL(blob);
+          p.status = 'ok';
+          p.blob   = null;
+          dbSave(p);
+          render();
+          resolve();
+        }, 'image/jpeg', Q);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(p.blob);
+  });
 }
 
-function fmtSz(b) {
-  const p = fmtSzParts(b);
-  return p.num + ' ' + p.unit;
+async function runQueue() {
+  if (busy || !queue.length) return;
+  busy = true;
+  const p = queue.shift();
+  try { await compress(p); } catch (e) { p.status = 'err'; console.error('compress', e); }
+  busy = false;
+  if (!queue.length && $('lock-banner')) $('lock-banner').classList.remove('show');
+  runQueue();
 }
 
-// ── ZIP Helpers ────────────────────────────────────────────────────────────
-
-
-function triggerDownload(blob, filename) {
-  const u = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = u;
-  a.download = filename;
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(u), 30_000);
-}
-
-
-// ── In-App Camera Logic (V2) ───────────────────────────────────────────────
-let videoStream = null;
-
+// ── Camera (V2) ────────────────────────────────────────────────────────────
 async function startCamera() {
-  const video = document.getElementById('viewfinder');
+  const video = $('viewfinder');
+  if (!video) return;
   try {
     if (videoStream) {
       videoStream.getTracks().forEach(t => t.stop());
     }
     const constraints = {
       video: {
-        facingMode: 'environment', // back camera
+        facingMode: 'environment',
         width: { ideal: 1920 },
         height: { ideal: 1080 }
       },
@@ -906,55 +757,46 @@ async function startCamera() {
     };
     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = videoStream;
-    // Play is handled by autoplay, but just in case:
     await video.play().catch(e => console.warn('video play error', e));
   } catch (err) {
     console.error('Camera access denied or error:', err);
-    toast('Camera access required!', 'err');
+    toast('Camera access required for live viewfinder', 'err');
   }
 }
 
-// Start camera when DOM loads
-window.addEventListener('load', () => {
-  startCamera();
-});
-
 function takePhoto() {
-  const video = document.getElementById('viewfinder');
-  const canvas = document.getElementById('capture-canvas');
+  const video = $('viewfinder');
+  const canvas = $('capture-canvas');
+  if (!video || !canvas) return;
   if (!videoStream || video.videoWidth === 0) {
-    toast('Camera not ready', 'err');
+    toast('Camera not ready yet', 'err');
     return;
   }
-  
-  // Flash effect on video
+
+  // Flash feedback
   video.style.opacity = '0.2';
   setTimeout(() => video.style.opacity = '1', 100);
-  
+
   const w = video.videoWidth;
   const h = video.videoHeight;
-  
-  // Set canvas dimensions to match video
   canvas.width = w;
   canvas.height = h;
-  
+
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, w, h);
-  
-  // Convert to blob and add to queue
+
   canvas.toBlob(blob => {
     if (!blob) { toast('Capture failed', 'err'); return; }
-    
+
     const existingNames = new Set(photos.map(p => p.name));
-    let raw = 'photo.jpg';
     let base = 'photo';
-    let n = raw;
+    let n = base + '.jpg';
     let counter = 1;
     while (existingNames.has(n)) {
       n = `${base}_${counter}.jpg`;
       counter++;
     }
-    
+
     const p = {
       id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
       name:   n,
@@ -969,13 +811,25 @@ function takePhoto() {
     queue.push(p);
     render();
     runQueue();
-  }, 'image/jpeg', 1.0); // full quality for raw capture, will be compressed by queue
+  }, 'image/jpeg', 0.95);
 }
 
-// ── 2-Step Export (V2) ─────────────────────────────────────────────────────
-window.makeZip = async function(triggerDownloadFlag = false) {
+// ── Export & ZIP ───────────────────────────────────────────────────────────
+function triggerDownload(blob, filename) {
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = u;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 30_000);
+}
+
+async function makeZip(triggerDownloadFlag = false) {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
-  if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
+  if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return null; }
 
   toast('Preparing ZIP…');
   const z = new JSZip();
@@ -995,112 +849,149 @@ window.makeZip = async function(triggerDownloadFlag = false) {
     usedNames.add(finalName);
     f.file(finalName, p.comp);
   });
-  
+
   const zipBlob = await z.generateAsync({ type: 'blob' });
   const zipFileName = folderName + '.zip';
-  
+
   if (triggerDownloadFlag) {
     triggerDownload(zipBlob, zipFileName);
-    toast('✅ ZIP saved!', 'ok');
+    toast('✅ ZIP saved to device!', 'ok');
   }
-  
+
   return zipBlob;
+}
+
+window.makeZip = makeZip;
+window.takePhoto = takePhoto;
+
+// ── Delete / Clear ─────────────────────────────────────────────────────────
+window.del = id => {
+  const i = photos.findIndex(p => p.id === id);
+  if (i > -1) {
+    if (photos[i].url) URL.revokeObjectURL(photos[i].url);
+    photos.splice(i, 1);
+    dbDelete(id);
+    render();
+  }
 };
 
-// Make sure global makeZip uses this new version.
-function promptClear() {
-  showDialog({
-    title: 'Batch Prepared!',
-    msg: 'Would you like to clear the tray and start a new batch?',
-    okText: 'Clear Tray',
-    cancelText: 'Keep Photos',
-    onOk: () => clearAll()
-  });
-}
-
-// ── Custom Dialog Helpers ──────────────────────────────────────────────────
-function showDialog({ title, msg, okText = 'OK', cancelText = null, onOk, onCancel }) {
-  $('dialog-title').textContent = title || 'PerfiKlose';
-  $('dialog-msg').innerHTML = msg.replace(/\n/g, '<br>');
-
-  const okBtn = $('dialog-ok');
-  okBtn.textContent = okText;
-  okBtn.onclick = () => {
-    closeDialog();
-    if (onOk) onOk();
-  };
-
-  const cancelBtn = $('dialog-cancel');
-  if (cancelText) {
-    cancelBtn.style.display = 'inline-flex';
-    cancelBtn.textContent = cancelText;
-    cancelBtn.onclick = () => {
-      closeDialog();
-      if (onCancel) onCancel();
-    };
-  } else {
-    cancelBtn.style.display = 'none';
-  }
-
-  $('dialog-modal').classList.add('show');
-}
-
-function closeDialog() {
-  $('dialog-modal').classList.remove('show');
-}
-
-// ── Toast ──────────────────────────────────────────────────────────────────
-let _toastTimer = null;
-function toast(msg, type) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
-}
+window.clearAll = () => {
+  photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
+  photos = []; queue = []; busy = false;
+  if ($('stale-banner')) $('stale-banner').classList.remove('show');
+  dbClear();
+  newFolder();
+  render();
+  toast('Tray reset for next batch');
+};
 
 // ── Settings ───────────────────────────────────────────────────────────────
 function showSettings() {
-  $('q-slider').value = Q;
-  $('q-val').textContent = Math.round(Q * 100) + '%';
-  $('max-slider').value = MAX;
-  $('max-val').textContent = MAX + 'px';
-  $('settings-modal').classList.add('show');
+  if ($('q-slider')) $('q-slider').value = Q;
+  if ($('q-val')) $('q-val').textContent = Math.round(Q * 100) + '%';
+  if ($('max-slider')) $('max-slider').value = MAX;
+  if ($('max-val')) $('max-val').textContent = MAX + 'px';
+  if ($('settings-modal')) $('settings-modal').classList.add('show');
 }
+window.showSettings = showSettings;
 
 function closeSettings() {
-  $('settings-modal').classList.remove('show');
+  if ($('settings-modal')) $('settings-modal').classList.remove('show');
+}
+window.closeSettings = closeSettings;
+
+if ($('q-slider')) {
+  $('q-slider').oninput = e => {
+    Q = parseFloat(e.target.value);
+    const pct = Math.round(Q * 100) + '%';
+    if ($('q-val')) $('q-val').textContent = pct;
+    if ($('hero-quality')) $('hero-quality').textContent = pct;
+    localStorage.setItem('perfiKlose_q', Q);
+  };
 }
 
-$('q-slider').oninput = e => {
-  Q = parseFloat(e.target.value);
-  const pct = Math.round(Q * 100) + '%';
-  $('q-val').textContent = pct;
-  $('hero-quality').textContent = pct;
-  localStorage.setItem('perfiKlose_q', Q);
-};
+if ($('max-slider')) {
+  $('max-slider').oninput = e => {
+    MAX = parseInt(e.target.value, 10);
+    if ($('max-val')) $('max-val').textContent = MAX + 'px';
+    localStorage.setItem('perfiKlose_max', MAX);
+  };
+}
 
-$('max-slider').oninput = e => {
-  MAX = parseInt(e.target.value, 10);
-  $('max-val').textContent = MAX + 'px';
-  localStorage.setItem('perfiKlose_max', MAX);
-};
+// ── Glow Orb ───────────────────────────────────────────────────────────────
+{
+  let _rafPending = false;
+  let _ex = 0, _ey = 0;
+  window.addEventListener('mousemove', e => {
+    _ex = e.pageX; _ey = e.pageY;
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(() => {
+      const orb = $('glow-orb');
+      if (orb) {
+        const x = (window.innerWidth  / 2 - _ex) / 28;
+        const y = (window.innerHeight / 2 - _ey) / 28;
+        orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
+      }
+      _rafPending = false;
+    });
+  }, { passive: true });
+}
 
-// ── PWA Update (Fix #6) ────────────────────────────────────────────────────
+// ── Page Visibility ────────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if ((queue.length > 0 || busy) && $('lock-banner')) $('lock-banner').classList.add('show');
+  } else {
+    if ($('lock-banner')) $('lock-banner').classList.remove('show');
+    if (!busy && queue.length > 0) runQueue();
+  }
+});
+
+// ── PWA Update ─────────────────────────────────────────────────────────────
 function applyUpdate() {
   if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
   else window.location.reload();
 }
+window.applyUpdate = applyUpdate;
+
+// ── App Startup ────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  if ($('hero-quality')) $('hero-quality').textContent = Math.round(Q * 100) + '%';
+  folderName = localStorage.getItem('perfiKlose_folderName');
+  if (!folderName) newFolder();
+  if (folderName && !localStorage.getItem('perfiKlose_savedAt')) {
+    localStorage.setItem('perfiKlose_savedAt', Date.now());
+  }
+
+  // Load IndexedDB items
+  const list = await dbLoadAll();
+  photos = list;
+  render();
+
+  if (list.length > 0) {
+    const savedAt = parseInt(localStorage.getItem('perfiKlose_savedAt') || '0', 10);
+    const daysOld = savedAt ? (Date.now() - savedAt) / 86_400_000 : 0;
+    if (daysOld >= STALE_DAYS && $('stale-banner')) {
+      const d = Math.floor(daysOld), n = list.length;
+      $('stale-msg').textContent = `You have ${n} unsent photo${n > 1 ? 's' : ''} from ${d} day${d > 1 ? 's' : ''} ago — share or clear them soon.`;
+      $('stale-banner').classList.add('show');
+    }
+  }
+
+  // Start in-app camera
+  startCamera();
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       swReg = reg;
-      if (reg.waiting) $('update-banner').classList.add('show');
+      if (reg.waiting && $('update-banner')) $('update-banner').classList.add('show');
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller && $('update-banner')) {
             swReg = reg;
             $('update-banner').classList.add('show');
           }
