@@ -237,6 +237,13 @@ body {
 <!-- ══ Main Content ══ -->
 <main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:210px;display:flex;flex-direction:column;gap:1.25rem;">
 
+  
+  <!-- ── In-App Camera Viewfinder ── -->
+  <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.5rem;display:flex;flex-direction:column;align-items:center;background:#000;">
+    <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;"></video>
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+  </section>
+
   <!-- ── Hero Stats Card ── -->
   <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.75rem 1rem .6rem;">
     <!-- Decorative blob -->
@@ -364,56 +371,48 @@ body {
 
 </main>
 
-<!-- ══ Fixed Bottom Dock ══ -->
+
+<!-- ══ Fixed Bottom Dock (V2) ══ -->
 <div style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
-            display:flex;flex-direction:column;align-items:center;gap:.75rem;
+            display:flex;flex-direction:column;align-items:center;gap:.5rem;
             padding:1rem 1.25rem calc(1rem + var(--safe));
-            background:linear-gradient(to top, rgba(0,0,0,.85) 60%, transparent);
+            background:linear-gradient(to top, rgba(0,0,0,.95) 70%, transparent);
             pointer-events:none;">
 
-  <!-- Row 1: Take Photo + Gallery -->
-  <div style="display:flex;justify-content:center;align-items:center;gap:.875rem;width:100%;">
-    <label for="cam" class="neon-btn"
+  <!-- Row 1: Shutter Button -->
+  <div style="display:flex;justify-content:center;align-items:center;gap:.875rem;width:100%;margin-bottom:.5rem;">
+    <button id="shutterBtn" onclick="takePhoto()" class="neon-btn"
            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                  padding:.875rem 2rem;border-radius:999px;
+                  width:72px;height:72px;border-radius:50%;
                   background:#fff;color:#0058bc;
-                  font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
-                  cursor:pointer;flex:1;max-width:280px;">
-      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.35rem;">camera</span>
-      Take Photo
-      <input type="file" id="cam" accept="image/*" capture="environment" style="display:none;">
-    </label>
-
-    <label for="gal" class="glass-card"
-           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
-                  width:54px;height:54px;border-radius:50%;
-                  cursor:pointer;flex-shrink:0;
-                  border:2px solid rgba(255,255,255,.28);
-                  transition:transform .1s;
-                  box-shadow:0 4px 20px rgba(0,0,0,.35);"
-           onmouseenter="this.style.transform='scale(1.07)'"
-           onmouseleave="this.style.transform='scale(1)'"
-           onmousedown="this.style.transform='scale(.95)'"
-           onmouseup="this.style.transform='scale(1)'">
-      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.25rem;">grid_view</span>
-      <input type="file" id="gal" accept="image/*" multiple style="display:none;">
-    </label>
+                  border:4px solid rgba(255,255,255,.2);
+                  cursor:pointer;box-shadow:0 0 20px rgba(255,255,255,.3);">
+      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:2rem;">camera</span>
+    </button>
   </div>
 
-  <!-- Row 2: Save & Email -->
-  <button id="shareBtn" onclick="saveAndEmailFlow()" class="neon-btn"
-          style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                 padding:.75rem 0;border-radius:999px;
-                 background:#0058bc;color:#fff;
-                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
-                 border:none;cursor:pointer;font-family:inherit;
-                 width:100%;max-width:320px;
-                 transition:opacity .2s,transform .1s,background-color .2s;">
-    <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">send</span>
-    Save &amp; Email
-  </button>
+  <!-- Row 2: 2-Step Export Dock -->
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;width:100%;max-width:320px;">
+    <button id="saveZipBtn" onclick="makeZip(true)" class="neon-btn"
+            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;flex:1;
+                   padding:.75rem 0;border-radius:999px;
+                   background:#0058bc;color:#fff;
+                   font-weight:700;font-size:.85rem;letter-spacing:.05em;text-transform:uppercase;
+                   border:none;cursor:pointer;font-family:inherit;">
+      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;margin-right:.25rem;">download</span>
+      1. Save ZIP
+    </button>
+    <button id="openEmailBtn" onclick="window.location.href='mailto:'" class="glass-card"
+            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;flex:1;
+                   padding:.75rem 0;border-radius:999px;
+                   background:rgba(255,255,255,.1);color:#fff;
+                   font-weight:700;font-size:.85rem;letter-spacing:.05em;text-transform:uppercase;
+                   border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;">
+      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;margin-right:.25rem;">mail</span>
+      2. Open Mail
+    </button>
+  </div>
 </div>
-
 
 
 <!-- ══ Settings Modal ══ -->
@@ -873,28 +872,7 @@ function fmtSz(b) {
 }
 
 // ── ZIP Helpers ────────────────────────────────────────────────────────────
-async function makeZip() {
-  const z = new JSZip();
-  const f = z.folder(folderName);
-  const usedNames = new Set();
-  photos.forEach((p, idx) => {
-    if (p.status === 'ok' && p.comp) {
-      let fileName = p.name || `photo_${idx + 1}.jpg`;
-      let finalName = fileName;
-      let counter = 1;
-      const dot = fileName.lastIndexOf('.');
-      const base = dot > -1 ? fileName.slice(0, dot) : fileName;
-      const ext = dot > -1 ? fileName.slice(dot) : '.jpg';
-      while (usedNames.has(finalName)) {
-        finalName = `${base}_${counter}${ext}`;
-        counter++;
-      }
-      usedNames.add(finalName);
-      f.file(finalName, p.comp);
-    }
-  });
-  return z.generateAsync({ type: 'blob' });
-}
+
 
 function triggerDownload(blob, filename) {
   const u = URL.createObjectURL(blob);
@@ -908,54 +886,128 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(u), 30_000);
 }
 
-// ── Save & Email (Unified Flow) ────────────────────────────────────────────
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-async function saveAndEmailFlow() {
+// ── In-App Camera Logic (V2) ───────────────────────────────────────────────
+let videoStream = null;
+
+async function startCamera() {
+  const video = document.getElementById('viewfinder');
+  try {
+    if (videoStream) {
+      videoStream.getTracks().forEach(t => t.stop());
+    }
+    const constraints = {
+      video: {
+        facingMode: 'environment', // back camera
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = videoStream;
+    // Play is handled by autoplay, but just in case:
+    await video.play().catch(e => console.warn('video play error', e));
+  } catch (err) {
+    console.error('Camera access denied or error:', err);
+    toast('Camera access required!', 'err');
+  }
+}
+
+// Start camera when DOM loads
+window.addEventListener('load', () => {
+  startCamera();
+});
+
+function takePhoto() {
+  const video = document.getElementById('viewfinder');
+  const canvas = document.getElementById('capture-canvas');
+  if (!videoStream || video.videoWidth === 0) {
+    toast('Camera not ready', 'err');
+    return;
+  }
+  
+  // Flash effect on video
+  video.style.opacity = '0.2';
+  setTimeout(() => video.style.opacity = '1', 100);
+  
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  
+  // Set canvas dimensions to match video
+  canvas.width = w;
+  canvas.height = h;
+  
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+  
+  // Convert to blob and add to queue
+  canvas.toBlob(blob => {
+    if (!blob) { toast('Capture failed', 'err'); return; }
+    
+    const existingNames = new Set(photos.map(p => p.name));
+    let raw = 'photo.jpg';
+    let base = 'photo';
+    let n = raw;
+    let counter = 1;
+    while (existingNames.has(n)) {
+      n = `${base}_${counter}.jpg`;
+      counter++;
+    }
+    
+    const p = {
+      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      name:   n,
+      origSz: blob.size,
+      compSz: 0,
+      blob:   blob,
+      comp:   null,
+      url:    '',
+      status: 'q'
+    };
+    photos.push(p);
+    queue.push(p);
+    render();
+    runQueue();
+  }, 'image/jpeg', 1.0); // full quality for raw capture, will be compressed by queue
+}
+
+// ── 2-Step Export (V2) ─────────────────────────────────────────────────────
+window.makeZip = async function(triggerDownloadFlag = false) {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
   if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
   toast('Preparing ZIP…');
-  const zipBlob = await makeZip();
-  const zipFileName = folderName + '.zip';
-
-  // Step 1: Show modal with Download button (ensures a fresh user gesture for the download)
-  const attachFolder = isIOS ? 'Recents or Downloads' : 'Downloads';
-
-  showDialog({
-    title: '📧 Save & Email',
-    msg: 'Your ZIP file <b>' + esc(zipFileName) + '</b> is ready.<br><br>' +
-         'Tap <b>Download & Continue</b> to save the ZIP to your device, then open your email app.',
-    okText: 'Download & Continue',
-    cancelText: 'Cancel',
-    onOk: () => {
-      // Step 2: Trigger download from the fresh user tap
-      triggerDownload(zipBlob, zipFileName);
-      toast('✅ ZIP saved!', 'ok');
-
-      // Step 3: After a brief moment for the download to start, show the email prompt
-      setTimeout(() => {
-        const mailToUrl =
-          'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
-          '&body=' + encodeURIComponent('Here are the latest pictures you took, sent via Perfiklose.');
-
-        waitingForEmailReturn = true;
-
-        showDialog({
-          title: '📎 Attach Your ZIP',
-          msg: 'Your file <b>' + esc(zipFileName) + '</b> is saved to your phone.<br><br>' +
-               'Your email app will open next. Tap the 📎 paperclip icon and select your ZIP from the <b>' + attachFolder + '</b> folder.',
-          okText: 'Open Email App',
-          cancelText: 'Skip Email',
-          onOk: () => {
-            window.location.href = mailToUrl;
-          }
-        });
-      }, 600);
+  const z = new JSZip();
+  const f = z.folder(folderName);
+  const usedNames = new Set();
+  readyPhotos.forEach((p, idx) => {
+    let fileName = p.name || `photo_${idx + 1}.jpg`;
+    let finalName = fileName;
+    let counter = 1;
+    const dot = fileName.lastIndexOf('.');
+    const base = dot > -1 ? fileName.slice(0, dot) : fileName;
+    const ext = dot > -1 ? fileName.slice(dot) : '.jpg';
+    while (usedNames.has(finalName)) {
+      finalName = `${base}_${counter}${ext}`;
+      counter++;
     }
+    usedNames.add(finalName);
+    f.file(finalName, p.comp);
   });
-}
+  
+  const zipBlob = await z.generateAsync({ type: 'blob' });
+  const zipFileName = folderName + '.zip';
+  
+  if (triggerDownloadFlag) {
+    triggerDownload(zipBlob, zipFileName);
+    toast('✅ ZIP saved!', 'ok');
+  }
+  
+  return zipBlob;
+};
 
+// Make sure global makeZip uses this new version.
 function promptClear() {
   showDialog({
     title: 'Batch Prepared!',
