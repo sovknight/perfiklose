@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PerfiKlose — Compress &amp; Share</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
 <meta name="description" content="Snap, compress &amp; share photos effortlessly. Zero install.">
 <link rel="manifest" href="manifest.json">
@@ -30,101 +29,6 @@
 </style>
 
 <style>
-
-/* ── Viewfinder base styles ────────────────────────────────────────────── */
-#viewfinder-wrap {
-  position: relative;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-#viewfinder {
-  width: 100%;
-  border-radius: 16px;
-  background: #111;
-  aspect-ratio: 3/4;
-  object-fit: cover;
-  display: block;
-  transition: border-radius 0.2s;
-}
-
-/* Landscape mode — applied via JS toggling .landscape on <body> */
-body.landscape main {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  max-width: 100vw !important;
-}
-body.landscape main section.hero-card {
-  border-radius: 0 !important;
-  padding: 0 !important;
-}
-body.landscape #viewfinder-wrap {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 0 !important;
-}
-body.landscape #viewfinder {
-  width: 100vw !important;
-  height: 100vh !important;
-  aspect-ratio: auto !important;
-  object-fit: cover !important;
-  border-radius: 0 !important;
-}
-body.landscape #dock-bar {
-  top: 0 !important;
-  bottom: 0 !important;
-  right: 0 !important;
-  left: auto !important;
-  width: 112px !important;
-  height: 100vh !important;
-  padding: 16px 10px !important;
-  background: linear-gradient(to left, rgba(0,0,0,.82) 55%, transparent) !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  gap: .8rem !important;
-  align-items: center !important;
-}
-body.landscape #dock-row1 {
-  flex-direction: column !important;
-  gap: .65rem !important;
-  margin-bottom: 0 !important;
-  width: 100% !important;
-  align-items: center !important;
-}
-body.landscape #dock-row2 {
-  flex-direction: column !important;
-  width: 88px !important;
-  gap: .4rem !important;
-}
-body.landscape #shutterBtn {
-  width: 62px !important;
-  height: 62px !important;
-}
-body.landscape label[for="gal"],
-body.landscape #flipCamBtn {
-  width: 46px !important;
-  height: 46px !important;
-}
-body.landscape #saveZipBtn,
-body.landscape #openEmailBtn {
-  padding: .4rem 0 !important;
-  font-size: .72rem !important;
-  border-radius: 10px !important;
-}
-body.landscape header {
-  display: none !important;
-}
-body.landscape #cam-thumb-bubble {
-  top: 12px !important;
-  left: 12px !important;
-  z-index: 10 !important;
-}
-
 /* ── Reset & Base ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root { --safe: env(safe-area-inset-bottom, 0px); }
@@ -141,7 +45,10 @@ body {
 /* ── Keyframes ────────────────────────────────────────────────────────── */
 @keyframes pop        { from { transform:scale(.9);  opacity:0 } to { transform:scale(1); opacity:1 } }
 @keyframes sp         { to   { transform:rotate(360deg) } }
-
+@keyframes spin-cw    { to   { transform:rotate(360deg)  } }
+@keyframes spin-ccw   { to   { transform:rotate(-360deg) } }
+@keyframes pulse-ring { 0%,100%{box-shadow:0 0 20px rgba(0,88,188,.4)} 50%{box-shadow:0 0 50px rgba(0,88,188,.9)} }
+@keyframes float-up   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
 
 /* ── Material Symbols filled variant ─────────────────────────────────── */
 .filled { font-variation-settings: 'FILL' 1; }
@@ -191,7 +98,11 @@ body {
 .neon-btn:active { transform: scale(.96); box-shadow: 0 0 14px rgba(255,255,255,.2); }
 
 /* ── Spinning Dashed Rings ────────────────────────────────────────────── */
+.ring-cw  { animation: spin-cw  14s linear infinite; }
+.ring-ccw { animation: spin-ccw 20s linear infinite; }
 
+/* ── Camera icon float ────────────────────────────────────────────────── */
+.float-anim { animation: float-up 3.5s ease-in-out infinite; }
 
 /* ── Photo Grid ───────────────────────────────────────────────────────── */
 #grid {
@@ -288,7 +199,6 @@ body {
 
 <body>
 
-<audio id="shutter-audio" src="data:audio/wav;base64,UklGRvoZAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YdYZAACa2bQ5bEplVghcfFq9UZ1Cqy7/FwEBIuyL2+jQM82X0G7aVula+yoOaR/nLOs0XzbyMCIlJxTV/1vqDdYYxUS5wbMCtbO8xMmJ2uzsrP6fDfUXZxxiGhMSYgTY8mzfTMycuzevdagJqOqtV7ntyNLa7Owh/ZAJ0BATEj4N7QJe9EvjudG5wSu1ia26q/mvzrkfyFHZd+uL/KwKVhSKGO0W0w8zBIn1p+WG1gPKrsGYvjjBXMkw1lfmFfiDCccYSyToKg8s0CfdHnISLwTt9XzpeOAV3P3cPONA7u78vA3pHqguWju+QxRHMEWEPg40Euel2UnNnsPuvQ+9RsE+yhvXiubw9pcG4hN6HXgifiLAHf4UbgmW/BzwnOVx3pTbeN0H5JzuHvwbC/sZKSdBMT83ljhFNdEtOSPVFjEK2/439lbx2PDZ9O78MwhoFRIjqi/KOVdAn0JuQBM6WDBnJKgXmQueAdz6FfiT+SD/DQhJE34fOCsWNew76j6xPV44hy8mJH8X+Ary/5r3z/ID8jH13fsjBdUPmhoYJBwrvi56Lj8qciLeF6ALBP9c893peePE4ObhkeYR7l/3PgFkCp0R7xW4Fr0TNg2/A1D4EexH4CTWqc6HygnKD80T08sQ2hmzIiYqMC8UMXUvYSpHIvUXdQz2AKP2hO5g6aLnVOkZ7jr1vv2BBmAOUBSDF30XJhTEDfsEtfoF8A3m19042LjVhdZo2tTg8ei38Q766wB2BRoHmgUXARD6R/G453PegNa90MrN8s0l0frWvt6E50Xw/ffK/QMBUAGw/nf5SfID6qLhJdpy1DfR29Bw07DYC+Cx6LDxDvrkAH4FaAeCBv8CYP1i9u3u9edg4ufeCd7z34PkSuuW8438PwXMDHESqRU4Fi8U7Q8UCnMD8Pxp96PzK/JK8/329PybBDIN2hW1Hf8jIijJKekowiUT9CvuB+iC4mLeQNx93C/fJuTu6t7yKfv8ApIJSQ65EL4QeA5OCtsE4v4t+YT0ivGv8CXy1vVs+1UC3wk/EbIXkRxkH+8fOh6MGmkVew+ECUUEZQBl/on+1gARBcYKUhH+FwsezyLHJaMmUiUDIh0dNhcBETULfQZjAz0CKAMBBm8K5g+9FUAbxh/CItUj2CLiH0EbdRUfD+sIhQN7/zL93Pxu/qQBDQYRCwcQSRRFF5EY8hdpFSwRpQthBQP/Lvl29Evx7+9u8JvyGvZn+uX+9QIFBp8HegeDBdgBz/zf9p/wrOqX5drhxN9030gGAwm1DNMQxBT3F/EZXBoRGR0WvRFYDHQGowB3+2z33fT688D0/fZT+kX+RQLHBUwIcwkICQMHjQP8/sL5aPR673frwuiZ5wro9+kW7frwIPUC+SD8E/6Z/pr9LfuR9yzzee786TTmiuNG4ojiQeQ85xrrae+n81f3D/qA+4b7I/qI9wj0EPAc7KjoIObV5PTkgOZT6SLthfEF9ir6hv3E/7AAQgCW/u77q/g+9R3ytu9h7lTuo+848tf1J/q9/iQD8AbHCWoLwgvdCusIQAZCA2AAB/6S/EH8Nf1m/6kCtQYnC5QPkRPAFtwYwBkj+sb4lvbv8zjx2u4z7YzsDe2/7oXxIvVD+YL9eQHLBCsHawh9CHYHigUJA1EAyP3I+6L6h/qL+5/9lQAmBPcHpgvWDjcRkxLREvcRLhC3DegKHwi4BQQEPQOAA80EAgflCSMNZBBLE4gV3BYnF2IWqRQxEkUPPQxxCTMHwwVIBcsFOgdkCQQMxg5TEVsTmhTnFDIUihIYEBwN5gnKBhsEGwL4AMgAgQH/AgkFVAeMCWILkgzpDFEMywp2CIgFRwID/wv8pPkC+ET3avdd+Oz51fvO/Yb/uQAyAc8Aiv91/bz6nPdf9FDxte7I7KzrjgUUBkMH5AivClwMpQ1RDjcOSQ2PCysJUAZAA0QAov2S+0D6wPkO+g37kPxX/hwAngGeAvICggJNAWv/Bf1X+qP3LfUy897xTvGG8XXy8/PL9bz3hfnp+rn71vs3++r5Evjf9ZHzZvGb72Hu2u0S7v/uhfB18pT0pfZs+LX5XfpV+qL5XPit9s30+fJq8VXw3u8a8AfxkPKP9ND2Gfkv+9/8Af5+/lT+k/1f/Ob6YPkI+BH3o/bY9rb3MPko+3D90/8YAg0EhwVpBqsGVAaBBVgEDwPaAe0AdQCNAEQBkwJjBJAG5wg2C0cN8A4y+sL6uvov+kL5Ifj/9g32efVk9eD17vZ/+HT6ofzY/uMAmQLVA4MEnQQxBFkDPgIMAff/Kf/H/un+lP/AAFcCMgQlBgEImQnHCnQLkwssC1IKKAnXB44GeQW+BHgEsgRrBZEGBgihCWxBd1NMYxBwGnn5fXl+qnrXcoJnXFk0SfA3eya4FXcGbfkm7wnoT+QG5BLnL+359fAAfw0AG8YoIDZkQvBMNVW5WiBdMFzUVx9QUEXMNyIo/hYmBXLzuuLO023HMr6OuL+2y7h9vmrH9tJb4LfuGv2TCkQWaB9kJc4nciZVIbMY+Ay6/qzuJDWyI9ISPgOa9WjqCOK23IHaWNsF3zLlce1A9wwCPQ03GF4iIysEMpM2eziGN5wzzixOI3MXtwmy+g/ritvizNK/ALX6rCaov6bRqDKuibZSwePNd9s96WL2HQLAC70SrxZjF9cUNg/aBkL8B/DW4mXVZ8iDvEyyO6qppM+hwKFypLipSrHJusLFttEc3mfqDvaOAHIJVhDrFP0WdxZgE+MNSQb9/H7yZOdT3PLR5sjDwQe9EbsXvCjAJMfB0I/c/Olc+PkGGRUKIi4tBDYwPH0/4T9/PZ84qzEoKaof0hU9DIADIfyL9hTz8fE588GtzLPcu6DFs9Cl3PzoO/XoAI0LwRQnHHkhhCQ0JY0jsR/fGXAS1wmVADz3Xe6L5krgC9wk2snaC97T4+Xr4PVHAYkNoRn5JGwvfzjJP/ZE0kdDSFJGJUL+Ozs0SyuuIeoXhw4HBt7+bfn99b70v/Xz+C/+KgWIDdgWnCBRKnQzizsoQvFGpUkdSk9IT0RPPpg2ii2VIzYZ6w4zBYX8Q/XD7z7s1OqI60LuzPLb+AwA8wcVEPcXIB8jJaApTCz1LIIr9ydzIi4bdxKxCEv+uvN46fffodfN0MHLqciXx4LISMusz17V/tsd40nqDfEWNLg40jsnPZI8CTqZNWovvCfhHjoVNAtBAdD3SO8G6Fbib95w3F3cJt6d4YLmguw880b6MgGWBxANSRH9E/wULRSRET8NaAdNAEX4ru/x5nneq9bnz3rKpcaRxFHE38UfyeDN3dPA2iriten78Jv3O/2RAWcElwUUBekCN/8v+hv0Te0m5gffVNhp0prNKspMyB3IpsnYzI7Rkteb3lXmY+5k9vj9xwSFCvEO3xE3E/QSKRH+DawJegS9/tD4D/PW7XnpP+Zi5AjkROUV6GPsBPK++EUASQhtEFkYtB8uJoYrhS8LMgkzhTKZMFP6PvZz8UPsBucT4r3dTdoC2ArXgtdz2dLcgeFT5wnuWfXz/H4EqwsnEq4XBRwDH5AgqCBXH74cDRmEFGoPEArIBOT/rftl+ED2Y/Xg9bn33Pol/2IEVAqzEDAXeh1FI0koSiwXL5IwqjBlL9UsISl8JCYfZxmME+INswhCBMcAb/5S/X396f58ARIFdQllDpsTzBiuHfshdCXkJycpIynUJ0QljiHaHF8XXREZC90E8v6Y+Q31f/ER79bt0e317iXxN/Tz9xv8aQCZBGUIjwveDSkPUA9GDgsMsAhVBCf/Wvkw8+vs0eYi4Rzc8td//2X9dPyo/O79JAAeA6YGfApgDg8SSxXcF5IZSxrvGXgY7RVlEgEO8QhsA7D9+/eP8qbtd+kt5ujjuuKn4qbjn+Vu6OLrx+/f8+z3svv3/okBQwMHBMYDgAJBACX9Tvnv9D3wc+vO5oji2N7r2+XZ4Njm2PbZANzo3ojir+Yo67nvJ/Q7+MH7jv6BAIcBlgGyAO/+aPxF+bb18fEt7qPqiecN5VjjhuKp4sbj1uXF6HTsu/Bp9Ur6Jv/HA/oHlAtuDm8QiBG3EQQRhg9cDa8KrweOBIMBwf54/NH67vnl+cL6hPwf/3sCeQbtCqkPz/CO9fz57P01AbsDaQU2BiQGQgWpA3kB3v4E/B35W/bt8//xtPAm8GjwfvFk8wn2VPkh/UUBlgXgCfUNphHMFEQX+BjYGeEZGhmWF24VxhLID6EMfwmRBgME+AGRAOP/9//PAGQCoQRpB5oKCg6NEfUUFRjGGuMcUx4AH+Qe/h1bHA4aNhf2E3YQ4wxpCTEGYwMgAYD/k/5g/uT+EQDUAQ0EmAZOCQUMkA7KEIwSuhM9FAgUFRNsERkPNgzfCDkFbAGj/QT6t/be85Xx8O/77rfuHu8g8KXxjvO49f33M/o0/Nv9Cv+m/57/6v5gG1EZrxaTEx4Qcgy3CBIFqgGj/hj8IPrN+CT4JPjC+O35ivt8/Z7/ywHfA7YFLQcsCJwIcginB0EGSgTXAQL/6fuv+Hr1bfKq71Hteus56pfpmek46mnrFe0k73bx6PNY9qL4pvpI/HD9Dv4Y/o/9ePzi+uP4lPYV9IfxDe/I7NfqVOlV6OjnE+jX6Cvq/+s97szwi/Na9hf5o/vg/bb/EAHjASsC6AEkAfD/Yf6T/KP6svjg9kz1EPRD8/byNfMB9Fj1Lvdy+Q785v7bAc8Eowc6CnoMTQ6kD3YQwRCLEN8Pzw5yDeILPQqhCCwHC+087Nrr8+uN7KntP+9E8aXzSfYX+fH7u/5VAagDnQUiByoIsgi5CEcIawc2BsAEJAN+Aer/g/5i/Zr8PvxV/OT86f1a/ygBQQOOBfMHVQqaDKUOYhC8EaUSFRMKE4YSlBFEEKgO2AzvCgYJOAedBU0EVwPJAqkC+QK0A84EOQbgB6wJgwtMDe4OURBgEQ0STBIXEnARWxDlDh4NGgvwCLoGkASKAsAARP8j/mn9GP0x/av9ev6P/9MAMgKTA94E/AXXBmAHiAdHB5wGiQUVBE4CRQAP/sL7dflA9zn1dPMB8uvwOvDw7wjwefA48QQHHQhHCWwKdAtMDOEMJA0MDZIMuAuACvYIJgckBQID1gC5/r389/p4+U/4g/ca9xL3ZvcM+Pb4EfpL+478xP3a/rz/WgCpAKEAQACH/3z+Kf2f++75Kvho9rz0O/P28fvwVvAM8CDwj/BS8V3yovMP9ZH2E/iB+cn62/uo/Cj9VP0t/bX89fv3+sz5hfg19+71xfTL8xDzn/KA8rnySfMr9Ff1wfZZ+A76zfuE/R//jQDCAbECUwOlA6gDYQPYAhsCOAFBAEn/X/6X/QD9p/yX/NT8Yv0//mT/xwBdAhUE3wWpB2EJ9gpZDH4NXQ6K/db91v2S/RP9Zvyb+8L67Pkq+Yz4IPjw9wX4Y/gK+fb5Ift//AX+ov9FAeACYAS4BdkGugdUCKQIqQhoCOkHNgdcBmoFcQSAA6cC9AFzAS0BKAFnAegBpwKbA7oE9QU/B4gIwAnYCsMLdgzoDBUN+gybDPwLJgsjCgIJ0AeeBnkFcQSSA+UCcwI/AksClAITA8EDkQR3BWUGSwcbCMkIRwmOCZYJXQniCCkINwcXBtQEegMZAr4AeP9S/lj9kvwH/Lj7pvvL+yP8o/w//ez9m/4//8r/MABpAGsAMwDA/xD/Kv4U/dn7hPoh+UsG8QSwA5UCqQHzAHcANQAtAFkAsgAuAcIBYgIAA48DBARVBHgEaAQhBKQD8wISAgsB5/+x/nX9QPwf+x76Rfmc+Cr48ffv9yT4iPgT+b35efo8+/r7pfw1/aD93v3s/cf9cP3r/D78cPuN+p75sfjQ9wb3X/bj9Zf1f/We9fH1dPYh9/D31/jL+b/6qvuA/Df9yP0t/mP+av5C/vH9ff3u/E/8qfsJ+3n6A/qw+Yf5jPnE+Sz6xPqG+2z8bP19/pX/pwCrAZYCXwMCBHgEwATbBMsElQRABNQDXAPhAm8CDgLJAaYBqwHcATsCxgJS9y74J/kz+kn7YPxs/WT+P//4/4YA6gAgASsBDgHPAHQABwCS/xz/sP5Y/hv+//0K/j3+mf4d/8T/hwBhAUgCNAMaBPEEsQVRBs0GIAdIB0UHGQfIBloG1AU/BaUEDwSFAxADtgJ+AmoCfAK0Ag4DhwMYBLkEZAUNBq0GOwewBwUINQg9CBwI1AdnB9oGMwZ6BbcE8gM1A4gC8QF3AR4B6ADXAOgAGQFkAcQBMQKiAhADcgPBA/UDCgT8A8kDcAP0AlgCoQHWAP//Iv9J/nv9wPwd/Jn7Nvv1+tj62/r7+jP7fPvP+yX8dfy4/Of8IwcWB+kGmQYpBpkF7wQvBGEDiwK1AecAKAB///H+gf4z/gf+/P0Q/j7+gv7T/i3/hv/Y/xsASwBjAF0AOQD4/5j/Hv+N/uz9Qf2T/On7S/u++kn67/m1+Zz5o/nJ+Qv6ZPrP+kb7wfs6/Kn8Cv1W/Yn9of2c/Xv9QP3u/Ir8Gfyh+yr7uvpX+gj60Pm1+bf52PkX+nL65vpt+wL8n/w9/dX9Yv7e/kX/k//G/93/2v/A/5H/Uv8K/73+c/4y/v/93/3X/er9GP5i/sf+RP/W/3UAIAHOAXoCHQOxAzMEnwTxBCgFRQVKBTgFEwVj/C389PvA+5T7ePtu+3v7oPvf+zf8pfwo/bv9Wf78/qD/PADOAFABvQESAk8CcQJ6AmsCSAIVAtcBkgFNAQ0B1wCwAJwAnQC0AOMAJwGAAekBXgLbAloD1gNJBK8EAwVCBWoFeAVuBUwFFQXMBHUEFQSyA1AD9QKkAmQCNQIbAhcCKAJMAoICxgITA2UDuAMFBEgEfASeBKwEowSDBEsE/wOhAzMDuwI8Ar0BQQHPAGkAEwDR/6L/iP+B/43/qf/Q/wAAMQBiAI0ArQC+AL4AqgCCAEQA8/+P/xz/nf4X/o79B/2H/BH8qvtT+xD7+gHcAdIB2AHtAQwCMgJZAn4CnAKwArUCqQKMAlsCGALDAWAB8AB5AP3/gv8K/5z+Of7n/ab9ef1f/Vn9Zf2A/aj92f0P/kX+eP6j/sT+1/7a/sz+rf59/j7+8/2f/UX96vyQ/D789fu6+4/7dvtw+3z7m/vJ+wb8Tfyb/Oz8PP2H/cr9Av4s/kb+Uf5L/jb+Ff7p/bX9fv1G/RP95/zF/LL8rvy7/Nn8Cf1J/Zf98P1R/rf+Hv+B/9//MgB5ALIA3AD3AAIB/wDxANkAuwCaAHsAYABNAEQASQBcAH8AsgD0AEMBngECAmsC1gJAA7f9Fv5q/rH+6f4S/yz/N/81/yj/E//4/tz+wv6t/p/+nP6l/rz+4f4U/1T/n//z/0wAqQAGAWABswH8AToCagKLAp0CoQKWAoACYAI5Ag4C4gG5AZUBeQFnAWIBaAF8AZwBxwH7ATcCdgK3AvYCMANjA4sDqAO2A7cDqQONA2UDMgP4ArgCdQIzAvUBvQGNAWcBTgFAAT4BSAFbAXYBmAG8AeABAQIdAjECOwI4AikCDQLkAa8BbwEmAdgAhgAzAOT/mP9T/xj/6P7D/qr+nP6a/qD+rf6//tT+6P74/gP/Bv///u3+0P6n/nL+M/7fAo8CPALmAZIBQgH4ALYAfgBRADAAGwARABEAGQAoADoATwBiAHIAfAB+AHcAZgBLACUA9/+//4D/Pf/4/rP+cP4z/v39z/2s/ZX9if2I/ZL9pf2//d/9Av4m/kj+Zv5//pD+mP6W/ov+d/5a/jf+Dv7i/bX9if1h/T/9JP0T/Qz9EP0e/Tf9Wv2E/bX96v0h/lf+i/66/uP+BP8d/yz/M/8x/yf/F/8D/+z+1f7B/rD+pv6j/qn+uP7R/vX+If9V/5D/z/8QAFMAlADRAAkBOQFiAYIBmAGmAawBqwGkAZkBjQGBAXcBcQFyAVX9Zv2A/aP9zv0B/jr+eP65/vv+PP96/7T/5/8RADQATwBgAGgAaQBjAFkASwA8AC0AIQAZABYAGwAnADoAVgB4AKEAzwAAATMBZgGXAcQB6wEMAiQCNAI7AjoCMAIgAgkC7wHSAbQBlwF9AWgBWAFOAUwBUQFdAW8BhgGhAb8B3QH7ARYCLAI8AkYCSAJBAjMCHAL+AdsBsgGGAVkBLAEBAdkAtgCZAIIAcgBpAGcAagByAH4AiwCYAKQArQCxALAAqQCaAIMAZQBBABYA6P+1/4D/S/8X/+X+uP6Q/m/+VP5A/jP+LP4r/i3+M/6wAbUBugG7AbgBrwGhAYwBcQFPAScB+wDMAJoAZwA1AAUA2v+y/5H/dv9i/1X/Tv9N/1L/Wv9l/3D/fP+G/43/kP+N/4b/eP9l/0z/L/8O/+r+xf6g/n3+Xf5B/iv+Gv4Q/gz+D/4Z/if+O/5R/mr+g/6b/rL+xf7U/t7+4/7i/t3+0v7E/rL+n/6L/nj+Z/5a/lD+TP5O/lb+ZP54/pL+sP7S/vb+G/9B/2X/hv+k/73/0v/h/+v/8P/x/+7/6P/i/9r/1P/Q/9D/0//c/+r//f8VADMAVQB7AKQAzgD5ACIBSgFuAY4BqgHAAdEB+f4C/wX/Bv8E/wH//v78/v3+AP8H/xP/I/85/1P/cf+T/7f/3v8DACkATgBvAI0ApgC7AMoA1ADYANkA1QDOAMUAuwCyAKkAowCgAKAApQCtALsAzADgAPgAEQErAUUBXgF0AYcBlwGhAacBqAGjAZoBjQF8AWkBVAE/ASoBFwEFAfcA7QDnAOQA5gDrAPMA/QAJARUBIQErATMBNwE4ATQBKwEeAQwB9gDdAMEAowCEAGUARwArABIA/f/r/93/0v/M/8n/yf/K/w==" preload="auto" playsinline style="display:none;"></audio>
 <!-- ══ Glow Orb ══ -->
 <div class="glow-orb" id="glow-orb"></div>
 
@@ -325,141 +235,186 @@ body {
 </header>
 
 <!-- ══ Main Content ══ -->
-<main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:150px;display:flex;flex-direction:column;gap:1.25rem;">
+<main class="mx-auto px-5 max-w-xl" style="padding-top:80px;padding-bottom:210px;display:flex;flex-direction:column;gap:1.25rem;">
 
-  
-  <!-- ── In-App Camera Viewfinder ── -->
-  <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.5rem;display:flex;flex-direction:column;align-items:center;background:#000;">
-    <div id="viewfinder-wrap">
-      <video id="viewfinder" autoplay playsinline></video>
-      
-      <!-- Floating Recent Thumbnail & Batch Info (Tap to Review) -->
-      <div id="cam-thumb-bubble" onclick="openReviewDrawer()" 
-           style="position:absolute;top:14px;left:14px;display:none;align-items:center;gap:.6rem;background:rgba(0,0,0,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,.28);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:20;cursor:pointer;transition:transform .1s;"
-           onmouseenter="this.style.transform='scale(1.05)'"
-           onmouseleave="this.style.transform='scale(1)'"
-           onmousedown="this.style.transform='scale(.95)'"
-           onmouseup="this.style.transform='scale(1)'"
-           title="Tap to review batch">
-        <img id="cam-thumb-img" src="" alt="Last shot" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#222;display:block;">
-        <div style="display:flex;flex-direction:column;gap:.1rem;">
-          <div style="display:flex;align-items:baseline;gap:.35rem;">
-            <span id="cam-thumb-count" style="font-size:.85rem;font-weight:700;color:#fff;line-height:1.1;">0 Photos</span>
-            <span id="cam-thumb-size" style="font-size:.72rem;font-weight:700;color:#93c5fd;">0 B</span>
+  <!-- ── Hero Stats Card ── -->
+  <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.75rem 1rem .6rem;">
+    <!-- Decorative blob -->
+    <div style="position:absolute;right:-24px;top:-24px;width:120px;height:120px;background:rgba(255,255,255,.08);border-radius:50%;filter:blur(30px);pointer-events:none;"></div>
+
+    <div style="position:relative;z-index:1;">
+      <!-- Stats Row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+        <div>
+          <p style="color:rgba(255,255,255,.6);font-size:.55rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.1rem;">Total Size</p>
+          <div style="display:flex;align-items:baseline;gap:.15rem;">
+            <span id="hero-num"
+                  style="font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:700;font-size:1.85rem;color:#fff;line-height:1;">
+              0
+            </span>
+            <span id="hero-unit" style="font-weight:700;font-size:.75rem;color:rgba(255,255,255,.8);">B</span>
           </div>
-          <span style="font-size:.55rem;color:rgba(255,255,255,.65);text-transform:uppercase;font-weight:600;letter-spacing:.06em;">Tap to Review</span>
+        </div>
+
+        <div style="display:flex;gap:.75rem;border-left:1px solid rgba(255,255,255,.15);padding-left:.75rem;">
+          <div style="text-align:center;">
+            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Ratio</p>
+            <p id="hero-ratio" style="color:#fff;font-weight:700;font-size:.8rem;white-space:nowrap;">—</p>
+          </div>
+          <div style="text-align:center;">
+            <p style="color:rgba(255,255,255,.5);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1;margin-bottom:.15rem;">Quality</p>
+            <p id="hero-quality" style="color:#fff;font-weight:700;font-size:.8rem;">60%</p>
+          </div>
         </div>
       </div>
+
+      <!-- Progress Bar -->
+      <div style="margin-top:.45rem;height:6px;width:100%;background:rgba(0,0,0,.3);border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
+        <div id="hero-progress"
+             style="height:100%;width:0%;border-radius:999px;transition:width .55s cubic-bezier(.4,0,.2,1);
+                    background:linear-gradient(90deg,#fff 0%,#00d4ff 100%);
+                    box-shadow:0 0 8px rgba(0,212,255,.55);">
+        </div>
+      </div>
+
+      <!-- Footer Labels -->
+      <div style="display:flex;justify-content:space-between;margin-top:.25rem;padding:0 .05rem;">
+        <span style="color:rgba(255,255,255,.6);font-weight:700;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;">Optimized</span>
+        <span id="hero-recovery" style="color:#fff;font-weight:700;font-size:.55rem;">0% Recovery</span>
+      </div>
     </div>
-    <canvas id="capture-canvas" style="display:none;"></canvas>
+  </section>
+
+  <!-- ── Processing Queue ── -->
+  <section>
+    <!-- Queue Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem;padding:0 .125rem;">
+      <h2 style="font-weight:700;font-size:1.05rem;letter-spacing:.09em;text-transform:uppercase;color:#fff;">Processing Queue</h2>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span id="cnt"
+              style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
+                     padding:.2rem .75rem;border-radius:999px;font-weight:700;font-size:.68rem;color:#fff;">
+          0 Items
+        </span>
+        <button id="clr" onclick="clearAll()"
+                style="display:none;align-items:center;gap:.25rem;
+                       background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);
+                       color:#fca5a5;padding:.2rem .65rem;border-radius:999px;
+                       font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;">
+          ✕ Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Glass Queue Card -->
+    <div class="glass-card" style="border-radius:24px;min-height:340px;display:flex;flex-direction:column;overflow:hidden;">
+
+      <!-- Empty State -->
+      <div id="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:2.5rem 1.5rem;text-align:center;gap:1.25rem;">
+
+        <!-- Animated rings + camera icon -->
+        <div style="position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center;">
+          <!-- Outer ring -->
+          <div class="ring-cw"
+               style="position:absolute;inset:0;border-radius:50%;
+                      border:2.5px dashed rgba(0,88,188,.38);">
+          </div>
+          <!-- Middle ring -->
+          <div class="ring-ccw"
+               style="position:absolute;inset:14px;border-radius:50%;
+                      border:2px dashed rgba(0,88,188,.2);">
+          </div>
+          <!-- Inner circle + icon -->
+          <div class="float-anim"
+               style="position:relative;width:98px;height:98px;
+                      background:rgba(255,255,255,.05);
+                      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+                      border-radius:50%;border:3px solid rgba(0,100,220,.65);
+                      display:flex;align-items:center;justify-content:center;
+                      animation:float-up 3.5s ease-in-out infinite,pulse-ring 3s ease-in-out infinite;">
+            <span class="material-symbols-outlined filled"
+                  style="color:#4d9fff;font-size:3rem;">photo_camera</span>
+            <!-- ZIP Badge -->
+            <div style="position:absolute;bottom:-5px;right:-12px;
+                        background:#fff;border-radius:10px;padding:.2rem .3rem;
+                        border:2px solid rgba(0,88,188,.5);
+                        box-shadow:0 2px 10px rgba(0,0,0,.5);
+                        transform:rotate(8deg);">
+              <span class="material-symbols-outlined"
+                    style="color:#0058bc;font-size:1.05rem;display:block;line-height:1;">
+                gif_box
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text -->
+        <div>
+          <h3 style="color:#fff;font-weight:700;font-size:1.2rem;letter-spacing:.1em;text-transform:uppercase;">
+            Queue Empty
+          </h3>
+        </div>
+      </div>
+
+      <!-- Photo Grid (injected by render()) -->
+      <div id="grid"></div>
+
+    </div>
   </section>
 
 </main>
 
-
-<!-- ══ Fixed Bottom Dock (V2) ══ -->
-<div id="dock-bar" style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
-            display:flex;flex-direction:column;align-items:center;gap:.5rem;
+<!-- ══ Fixed Bottom Dock ══ -->
+<div style="position:fixed;bottom:0;left:0;width:100%;z-index:50;
+            display:flex;flex-direction:column;align-items:center;gap:.75rem;
             padding:1rem 1.25rem calc(1rem + var(--safe));
-            background:linear-gradient(to top, rgba(0,0,0,.95) 70%, transparent);
+            background:linear-gradient(to top, rgba(0,0,0,.85) 60%, transparent);
             pointer-events:none;">
 
-  <!-- Row 1: Shutter Button & Gallery Picker -->
-  <div id="dock-row1" style="display:flex;justify-content:center;align-items:center;gap:1.25rem;width:100%;margin-bottom:.5rem;">
-    <!-- Gallery Picker Button -->
-    <label for="gal" class="glass-card"
-           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
-                  width:52px;height:52px;border-radius:50%;
-                  cursor:pointer;flex-shrink:0;
-                  border:2px solid rgba(255,255,255,.25);
-                  transition:transform .1s;
-                  box-shadow:0 4px 20px rgba(0,0,0,.35);"
-           title="Select from gallery"
-           onmouseenter="this.style.transform='scale(1.07)'"
-           onmouseleave="this.style.transform='scale(1)'"
-           onmousedown="this.style.transform='scale(.95)'"
-           onmouseup="this.style.transform='scale(1)'">
-      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.4rem;">photo_library</span>
-      <input type="file" id="gal" accept="image/*" multiple style="display:none;" onchange="handleFiles(event)">
+  <!-- Row 1: Take Photo + Gallery -->
+  <div style="display:flex;justify-content:center;align-items:center;gap:.875rem;width:100%;">
+    <label for="cam" class="neon-btn"
+           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                  padding:.875rem 2rem;border-radius:999px;
+                  background:#fff;color:#0058bc;
+                  font-weight:700;font-size:1rem;letter-spacing:.05em;text-transform:uppercase;
+                  cursor:pointer;flex:1;max-width:280px;">
+      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:1.35rem;">camera</span>
+      Take Photo
+      <input type="file" id="cam" accept="image/*" capture="environment" style="display:none;">
     </label>
 
-    <!-- Shutter Button -->
-    <button id="shutterBtn" onclick="takePhoto()" class="neon-btn"
+    <label for="gal" class="glass-card"
            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
-                  width:72px;height:72px;border-radius:50%;
-                  background:#fff;color:#0058bc;
-                  border:4px solid rgba(255,255,255,.2);
-                  cursor:pointer;box-shadow:0 0 20px rgba(255,255,255,.3);">
-      <span class="material-symbols-outlined filled" style="color:#0058bc;font-size:2rem;">camera</span>
-    </button>
-
-    <!-- Camera Switcher Button -->
-    <button id="flipCamBtn" onclick="toggleCamera()" class="glass-card"
-           style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
-                  width:52px;height:52px;border-radius:50%;
+                  width:54px;height:54px;border-radius:50%;
                   cursor:pointer;flex-shrink:0;
-                  border:2px solid rgba(255,255,255,.25);
+                  border:2px solid rgba(255,255,255,.28);
                   transition:transform .1s;
                   box-shadow:0 4px 20px rgba(0,0,0,.35);"
-           title="Switch Camera"
            onmouseenter="this.style.transform='scale(1.07)'"
            onmouseleave="this.style.transform='scale(1)'"
            onmousedown="this.style.transform='scale(.95)'"
            onmouseup="this.style.transform='scale(1)'">
-      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.35rem;">flip_camera_ios</span>
-    </button>
+      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.9);font-size:1.25rem;">grid_view</span>
+      <input type="file" id="gal" accept="image/*" multiple style="display:none;">
+    </label>
   </div>
 
-  <!-- Row 2: Export Dock -->
-  <div id="dock-row2" style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;width:100%;max-width:320px;">
-    <button id="saveZipBtn" onclick="makeZip(true)" class="neon-btn"
-            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;flex:1;
-                   padding:.75rem 0;border-radius:999px;
-                   background:#0058bc;color:#fff;
-                   font-weight:700;font-size:.85rem;letter-spacing:.05em;text-transform:uppercase;
-                   border:none;cursor:pointer;font-family:inherit;">
-      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;margin-right:.25rem;">download</span>
-      Save ZIP
-    </button>
-    <button id="openEmailBtn" onclick="window.location.href='mailto:'" class="glass-card"
-            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;flex:1;
-                   padding:.75rem 0;border-radius:999px;
-                   background:rgba(255,255,255,.1);color:#fff;
-                   font-weight:700;font-size:.85rem;letter-spacing:.05em;text-transform:uppercase;
-                   border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;">
-      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;margin-right:.25rem;">mail</span>
-      Open Email
-    </button>
-  </div>
+  <!-- Row 2: Save & Email -->
+  <button id="shareBtn" onclick="saveAndEmailFlow()" class="neon-btn"
+          style="pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+                 padding:.75rem 0;border-radius:999px;
+                 background:#0058bc;color:#fff;
+                 font-weight:700;font-size:.875rem;letter-spacing:.05em;text-transform:uppercase;
+                 border:none;cursor:pointer;font-family:inherit;
+                 width:100%;max-width:320px;
+                 transition:opacity .2s,transform .1s,background-color .2s;">
+    <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">send</span>
+    Save &amp; Email
+  </button>
 </div>
 
 
-<!-- ══ Batch Review Drawer Modal ══ -->
-<div class="modal-backdrop" id="review-modal" onclick="if(event.target===this) closeReviewDrawer()">
-  <div class="modal-panel glass-card" style="max-height:80vh;overflow-y:auto;border-radius:28px 28px 0 0;padding:1.5rem 1.25rem calc(1.5rem + var(--safe));">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-      <div style="display:flex;align-items:center;gap:.6rem;">
-        <h2 style="font-weight:700;font-size:1.2rem;letter-spacing:.02em;color:#fff;">Batch Review</h2>
-        <span id="cnt" style="background:rgba(255,255,255,.12);padding:.2rem .65rem;border-radius:999px;font-size:.7rem;font-weight:700;color:#fff;">0 Items</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:.6rem;">
-        <button id="clr" onclick="clearAll()" style="display:none;align-items:center;gap:.25rem;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.3rem .75rem;border-radius:999px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
-          ✕ Clear All
-        </button>
-        <button onclick="closeReviewDrawer()" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">✕</button>
-      </div>
-    </div>
-    
-    <!-- Empty State -->
-    <div id="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center;gap:.75rem;">
-      <span class="material-symbols-outlined" style="color:rgba(255,255,255,.3);font-size:3rem;">photo_library</span>
-      <p style="color:rgba(255,255,255,.6);font-size:.9rem;font-weight:600;">No photos in this batch yet</p>
-    </div>
-
-    <!-- Photo Grid (injected by render()) -->
-    <div id="grid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:.6rem;padding:.25rem 0;"></div>
-  </div>
-</div>
 
 <!-- ══ Settings Modal ══ -->
 <div class="modal-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
@@ -469,35 +424,29 @@ body {
       <button onclick="closeSettings()" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">✕</button>
     </div>
     
-    <!-- Quality Presets Section -->
-    <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1.25rem 1rem;border-radius:20px;border:1px solid rgba(255,255,255,.08);">
-      <p style="font-weight:700;font-size:.95rem;color:#fff;margin-bottom:.35rem;">Photo Quality</p>
-      <p id="preset-desc" style="font-size:.78rem;color:rgba(255,255,255,.65);line-height:1.4;margin-bottom:1rem;min-height:2.4em;">
-        Good: Compact resolution (~600px) &amp; high compression. Ultra-small files for weak cellular connections.
-      </p>
-
-      <!-- Segmented 3-Button Control -->
-      <div style="display:flex;gap:.5rem;background:rgba(0,0,0,.4);padding:4px;border-radius:14px;border:1px solid rgba(255,255,255,.1);">
-        <button type="button" id="preset-good" onclick="setPreset('good')" 
-                style="flex:1;padding:.65rem 0;border-radius:10px;border:none;background:#0058bc;color:#fff;font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit;box-shadow:0 2px 10px rgba(0,88,188,.5);transition:all .15s;">
-          Good
-        </button>
-        <button type="button" id="preset-better" onclick="setPreset('better')" 
-                style="flex:1;padding:.65rem 0;border-radius:10px;border:none;background:transparent;color:rgba(255,255,255,.7);font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .15s;">
-          Better
-        </button>
-        <button type="button" id="preset-best" onclick="setPreset('best')" 
-                style="flex:1;padding:.65rem 0;border-radius:10px;border:none;background:transparent;color:rgba(255,255,255,.7);font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .15s;">
-          Best
-        </button>
+    <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;">
+        <label for="q-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">JPEG Quality</label>
+        <span id="q-val" style="color:#4d9fff;font-weight:700;">60%</span>
       </div>
+      <input type="range" id="q-slider" min="0.1" max="0.8" step="0.05" value="0.6" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Lower quality gives smaller file sizes. 60-80% is recommended for receipts and documents.</p>
+    </div>
+    
+    <div style="margin-bottom:1.5rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;">
+        <label for="max-slider" style="font-weight:600;font-size:.95rem;color:rgba(255,255,255,.9);">Max Resolution</label>
+        <span id="max-val" style="color:#4d9fff;font-weight:700;">800px</span>
+      </div>
+      <input type="range" id="max-slider" min="400" max="1280" step="50" value="800" style="width:100%;accent-color:#4d9fff;margin-bottom:.5rem;">
+      <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.4;">Reduces image dimensions before compression. Prevents massive file sizes from high-MP cameras.</p>
     </div>
 
     <!-- About Section -->
     <div style="background:rgba(255,255,255,.03);padding:1rem;border-radius:16px;border:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:.75rem;">
       <span class="material-symbols-outlined filled" style="color:#4d9fff;font-size:1.5rem;">info</span>
       <div>
-        <p style="font-weight:600;font-size:.85rem;color:rgba(255,255,255,.95);">About PerfiKlose v2.0</p>
+        <p style="font-weight:600;font-size:.85rem;color:rgba(255,255,255,.95);">About PerfiKlose v1.0</p>
         <p style="font-size:.75rem;color:rgba(255,255,255,.55);line-height:1.4;">Written by Nic Bradbury &copy; 2026</p>
       </div>
     </div>
@@ -523,100 +472,56 @@ body {
 <script>
 'use strict';
 
-// ── Settings & Constants (Presets) ─────────────────────────────────────────
-const PRESETS = {
-  good: {
-    max: 600,
-    q: 0.50,
-    label: 'Good',
-    desc: 'Good: Compact resolution (~600px) & high compression. Ultra-small files for weak cellular connections.'
-  },
-  better: {
-    max: 800,
-    q: 0.60,
-    label: 'Better',
-    desc: 'Better: Standard resolution (~800px) & balanced compression. Recommended for daily field jobs.'
-  },
-  best: {
-    max: 1280,
-    q: 0.75,
-    label: 'Best',
-    desc: 'Best: High resolution (~1280px) & fine detail. Great for fine print or detailed inspections.'
-  }
-};
-
-let currentPreset = localStorage.getItem('perfiKlose_preset') || 'good';
-if (!PRESETS[currentPreset]) currentPreset = 'good';
-
-let MAX = PRESETS[currentPreset].max;
-let Q   = PRESETS[currentPreset].q;
+// ── Settings & Constants ───────────────────────────────────────────────────
+let Q          = Math.min(0.8, parseFloat(localStorage.getItem('perfiKlose_q')) || 0.6);
+let MAX        = Math.min(1280, parseInt(localStorage.getItem('perfiKlose_max'), 10) || 800);
 const MAX_PIXELS = 25_000_000;    // ~25 MP heap-crash prevention threshold
 const STALE_DAYS = 5;             // days before stale batch warning fires
 
 // ── State ──────────────────────────────────────────────────────────────────
-let photos      = [];   // Array of photo objects
-let queue       = [];   // Pending compression jobs
-let busy        = false;
-let swReg       = null; // Service worker registration handle
-let videoStream = null;
-let currentFacingMode = "environment";
-let folderName  = '';
-let waitingForEmailReturn = false;
-
+let photos   = [];   // Array of photo objects
+let queue    = [];   // Pending compression jobs
+let busy     = false;
+let swReg    = null; // Service worker registration handle
 const $ = id => document.getElementById(id);
-const cardMap    = new Map(); // id → DOM node
-const cardStatus = new Map(); // id → last rendered status
 
-// ── Utilities ──────────────────────────────────────────────────────────────
-function esc(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── Glow Orb Parallax (throttled with rAF) ────────────────────────────────
+{
+  let _rafPending = false;
+  let _ex = 0, _ey = 0;
+  window.addEventListener('mousemove', e => {
+    _ex = e.pageX; _ey = e.pageY;
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(() => {
+      const orb = $('glow-orb');
+      if (orb) {
+        const x = (window.innerWidth  / 2 - _ex) / 28;
+        const y = (window.innerHeight / 2 - _ey) / 28;
+        orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
+      }
+      _rafPending = false;
+    });
+  }, { passive: true });
 }
 
-function fmtSzParts(b) {
-  if (!b || b <= 0) return { num: '0', unit: 'B' };
-  const u = ['B','KB','MB','GB'];
-  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
-  return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
-}
-
-function fmtSz(b) {
-  const p = fmtSzParts(b);
-  return p.num + ' ' + p.unit;
-}
-
-// ── Toast ──────────────────────────────────────────────────────────────────
-let _toastTimer = null;
-function toast(msg, type) {
-  const t = $('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
-}
-
-
-// ── IndexedDB ──────────────────────────────────────────────────────────────
-// photos are stored as data-URL strings — the only format that works
-// reliably on every browser (iOS Safari, Android Chrome, desktop).
+// ── IndexedDB — singleton cached connection ────────────────────────────────
 const DB_NAME = 'PerfiKloseDB';
 const STORE   = 'photos';
-const DB_VER  = 3;             // bumped → wipes old corrupted records
-let _dbPromise = null;
+const DB_VER  = 2;
 
+let _dbPromise = null;
 function getDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
     const r = indexedDB.open(DB_NAME, DB_VER);
     r.onupgradeneeded = e => {
       const db = e.target.result;
-      if (db.objectStoreNames.contains(STORE)) db.deleteObjectStore(STORE);
-      db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
     };
     r.onsuccess = e => resolve(e.target.result);
     r.onerror   = e => { _dbPromise = null; reject(e.target.error); };
-    r.onblocked = () => console.warn('IDB blocked');
+    r.onblocked = () => console.warn('IndexedDB blocked — close other tabs');
   });
   return _dbPromise;
 }
@@ -624,48 +529,27 @@ function getDB() {
 async function dbSave(p) {
   try {
     const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const record = {
-        id:      p.id,
-        name:    p.name,
-        origSz:  p.origSz,
-        compSz:  p.compSz,
-        dataUrl: p.dataUrl,   // plain string — always survives IDB
-        status:  p.status
-      };
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(record);
-      tx.oncomplete = () => resolve();
-      tx.onerror    = () => reject(tx.error);
-    });
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ id:p.id, name:p.name, origSz:p.origSz, compSz:p.compSz, comp:p.comp, status:p.status });
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   } catch (e) { console.error('dbSave', e); }
 }
 
 async function dbDelete(id) {
   try {
     const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror    = () => reject(tx.error);
-    });
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   } catch (e) { console.error('dbDelete', e); }
 }
 
 async function dbClear() {
   try {
     const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).clear();
-      tx.oncomplete = () => {
-        localStorage.removeItem('perfiKlose_folderName');
-        localStorage.removeItem('perfiKlose_savedAt');
-        resolve();
-      };
-      tx.onerror = () => reject(tx.error);
-    });
+    db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
+    localStorage.removeItem('perfiKlose_folderName');
+    localStorage.removeItem('perfiKlose_savedAt');
   } catch (e) { console.error('dbClear', e); }
 }
 
@@ -675,22 +559,14 @@ async function dbLoadAll() {
     return new Promise((resolve, reject) => {
       const tx  = db.transaction(STORE, 'readonly');
       const req = tx.objectStore(STORE).getAll();
-      req.onsuccess = () => {
-        const loaded = (req.result || []).map(p => ({
-          ...p,
-          // dataUrl is used as both the image src and the zip source
-          comp: p.dataUrl || null,
-          url:  p.dataUrl || '',
-          blob: null
-        }));
-        resolve(loaded);
-      };
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(req.result.map(p => ({ ...p, blob: null, url: p.comp ? URL.createObjectURL(p.comp) : '' })));
+      req.onerror   = () => reject(req.error);
     });
   } catch (e) { console.error('dbLoadAll', e); return []; }
 }
 
 // ── Folder Naming ──────────────────────────────────────────────────────────
+let folderName = '';
 function newFolder() {
   const d = new Date();
   folderName = `Photos_${d.toISOString().slice(0,10)}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
@@ -698,28 +574,210 @@ function newFolder() {
   localStorage.setItem('perfiKlose_savedAt',    Date.now());
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────
+// ── Startup ────────────────────────────────────────────────────────────────
+$('hero-quality').textContent = Math.round(Q * 100) + '%';
+
+folderName = localStorage.getItem('perfiKlose_folderName');
+if (!folderName) newFolder();
+
+// Migration: seed savedAt for existing users who don't have it yet
+if (folderName && !localStorage.getItem('perfiKlose_savedAt')) {
+  localStorage.setItem('perfiKlose_savedAt', Date.now());
+}
+
+dbLoadAll().then(list => {
+  photos = list;
+  render();
+  // Stale batch warning (Fix #5)
+  if (list.length > 0) {
+    const savedAt = parseInt(localStorage.getItem('perfiKlose_savedAt') || '0', 10);
+    const daysOld = savedAt ? (Date.now() - savedAt) / 86_400_000 : 0;
+    if (daysOld >= STALE_DAYS) {
+      const d = Math.floor(daysOld), n = list.length;
+      $('stale-msg').textContent = `You have ${n} unsent photo${n > 1 ? 's' : ''} from ${d} day${d > 1 ? 's' : ''} ago — share or clear them soon.`;
+      $('stale-banner').classList.add('show');
+    }
+  }
+});
+
+let waitingForEmailReturn = false; // Tracks if user went to email app
+
+// ── Page Visibility API (Fix #1 + Email Return Confirmation) ───────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (queue.length > 0 || busy) $('lock-banner').classList.add('show');
+  } else {
+    $('lock-banner').classList.remove('show');
+    if (!busy && queue.length > 0) runQueue(); // resume if stalled
+    
+    // Check if returning from Email app
+    if (waitingForEmailReturn) {
+      waitingForEmailReturn = false;
+      setTimeout(() => {
+        showDialog({
+          title: '✉️ Email Sent!',
+          msg: 'Did you finish sending your email? Tap Clear Tray to reset for your next batch.',
+          okText: 'Clear Tray',
+          cancelText: 'Keep Batch',
+          onOk: () => clearAll()
+        });
+      }, 400);
+    }
+  }
+});
+
+// ── File Input Handler ─────────────────────────────────────────────────────
+function handleFiles(e) {
+  const files = [...e.target.files];
+  e.target.value = ''; // allow re-selecting the same file
+  const existingNames = new Set(photos.map(p => p.name));
+
+  files.forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    let raw = f.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const dot = raw.lastIndexOf('.');
+    let base = (dot > -1 ? raw.slice(0, dot) : raw);
+
+    let n = base + '.jpg';
+    let counter = 1;
+    while (existingNames.has(n)) {
+      n = `${base}_${counter}.jpg`;
+      counter++;
+    }
+    existingNames.add(n);
+
+    const p = {
+      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      name:   n,
+      origSz: f.size,
+      compSz: 0,
+      blob:   f,
+      comp:   null,
+      url:    '',
+      status: 'q'
+    };
+    photos.push(p);
+    queue.push(p);
+  });
+  render();
+  runQueue();
+}
+$('cam').onchange       = handleFiles;
+$('gal').onchange       = handleFiles;
+
+// ── Sequential Compression Queue ───────────────────────────────────────────
+async function runQueue() {
+  if (busy || !queue.length) return;
+  busy = true;
+  const p = queue.shift();
+  try { await compress(p); } catch (e) { p.status = 'err'; console.error('compress', e); }
+  busy = false;
+  if (!queue.length) $('lock-banner').classList.remove('show');
+  runQueue(); // tail-call next item
+}
+
+// ── Two-Pass Downscale for Ultra-High-MP Images (Fix #2) ──────────────────
+function safeDrawImage(img, ctx, w, h) {
+  const srcPixels = img.naturalWidth * img.naturalHeight;
+  if (srcPixels > MAX_PIXELS) {
+    // Pre-scale on intermediate canvas to avoid GPU/heap spike
+    const scale = Math.sqrt(MAX_PIXELS / srcPixels);
+    const iw    = Math.round(img.naturalWidth  * scale);
+    const ih    = Math.round(img.naturalHeight * scale);
+    const tmp   = document.createElement('canvas');
+    tmp.width = iw; tmp.height = ih;
+    tmp.getContext('2d').drawImage(img, 0, 0, iw, ih);
+    ctx.drawImage(tmp, 0, 0, w, h);
+    tmp.width = tmp.height = 0; // release memory
+  } else {
+    ctx.drawImage(img, 0, 0, w, h);
+  }
+}
+
+function compress(p) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onerror = () => { p.status = 'err'; render(); resolve(); };
+    reader.onload  = () => {
+      const img = new Image();
+      img.onerror = () => { p.status = 'err'; render(); resolve(); };
+      img.onload  = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * (MAX / w)); w = MAX; }
+          else       { w = Math.round(w * (MAX / h)); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        safeDrawImage(img, canvas.getContext('2d'), w, h);
+        canvas.toBlob(blob => {
+          canvas.width = canvas.height = 0; // release GPU memory immediately
+          if (!blob) { p.status = 'err'; render(); resolve(); return; }
+          p.comp   = blob;
+          p.compSz = blob.size;
+          p.url    = URL.createObjectURL(blob);
+          p.status = 'ok';
+          p.blob   = null; // release original file reference
+          dbSave(p);
+          render();
+          resolve();
+        }, 'image/jpeg', Q);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(p.blob);
+  });
+}
+
+// ── Delete / Clear ─────────────────────────────────────────────────────────
+window.del = id => {
+  const i = photos.findIndex(p => p.id === id);
+  if (i > -1) {
+    if (photos[i].url) URL.revokeObjectURL(photos[i].url);
+    photos.splice(i, 1);
+    dbDelete(id);
+    render();
+  }
+};
+
+window.clearAll = () => {
+  photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
+  photos = []; queue = []; busy = false;
+  $('stale-banner').classList.remove('show');
+  dbClear();
+  newFolder();
+  render();
+  toast('Tray reset for next batch');
+};
+
+// ── Render — Incremental DOM Diff ─────────────────────────────────────────
+const cardMap    = new Map(); // id → DOM node
+const cardStatus = new Map(); // id → last rendered status (skip unnecessary innerHTML sets)
+
 function render() {
   const grid = $('grid');
-  if (!grid) return;
   const n    = photos.length;
 
-  if ($('cnt')) $('cnt').textContent     = n > 0 ? `${n} Item${n > 1 ? 's' : ''}` : '0 Items';
-  if ($('clr')) $('clr').style.display   = n ? 'inline-flex' : 'none';
-  if ($('empty')) $('empty').style.display = n ? 'none' : 'flex';
+  // Header badge + visibility
+  $('cnt').textContent     = n > 0 ? `${n} Item${n > 1 ? 's' : ''}` : '0 Items';
+  $('clr').style.display   = n ? 'inline-flex' : 'none';
+  $('empty').style.display = n ? 'none' : 'flex';
   grid.style.display       = n ? 'grid' : 'none';
 
-  const currentIds = new Set(photos.map(p => p.id));
+  // Remove cards for deleted photos — collect first, then delete (avoids mutating during iteration)
+  const currentIds = new Set(photos.map(p => p.id)); // O(1) lookup
   const toRemove = [];
   for (const [id, node] of cardMap) {
     if (!currentIds.has(id)) toRemove.push(id);
   }
   toRemove.forEach(id => { cardMap.get(id).remove(); cardMap.delete(id); cardStatus.delete(id); });
 
+  // Update or insert cards, maintaining array order
   photos.forEach((p, idx) => {
     let card = cardMap.get(p.id);
     if (!card) { card = document.createElement('div'); cardMap.set(p.id, card); }
 
+    // Only rebuild innerHTML when status actually changed (optimization: avoids layout thrash)
     if (cardStatus.get(p.id) !== p.status) {
       cardStatus.set(p.id, p.status);
       card.className = 'card' + (p.status === 'q' ? ' loading' : '');
@@ -756,330 +814,88 @@ function render() {
       }
     }
 
+    // Keep DOM order in sync with photos array
     const ref = grid.children[idx];
     if (ref !== card) grid.insertBefore(card, ref || null);
   });
 
+  // ── Compute totals (single O(n) pass) ──
   let totalOrig = 0, totalComp = 0, anyReady = false, anyQueued = false;
   photos.forEach(p => {
     totalOrig += p.origSz;
     if (p.status === 'ok') { totalComp += p.compSz; anyReady = true; }
     else if (p.status === 'q') { totalComp += p.origSz; anyQueued = true; }
-    else { totalComp += p.origSz; }
+    else { totalComp += p.origSz; } // err photos count toward size but not readiness
   });
 
+  // ── Update Hero Stats ──
+  const saved   = Math.max(0, totalOrig - totalComp);
+  const savePct = totalOrig > 0 ? Math.round(saved / totalOrig * 100) : 0;
+  const ratio   = totalComp > 0 && totalOrig > 0
+    ? (totalOrig / totalComp).toFixed(1) + ':1'
+    : '—';
   const sp = fmtSzParts(totalComp);
+  $('hero-num').textContent      = sp.num;
+  $('hero-unit').textContent     = sp.unit;
+  $('hero-ratio').textContent    = ratio;
+  $('hero-progress').style.width = Math.min(savePct, 100) + '%';
+  $('hero-recovery').textContent = savePct + '% Recovery';
 
-  // Update floating camera thumbnail bubble with photo count & total size
-  const thumbBubble = $('cam-thumb-bubble');
-  const thumbImg    = $('cam-thumb-img');
-  const thumbCount  = $('cam-thumb-count');
-  const thumbSize   = $('cam-thumb-size');
-  if (thumbBubble && thumbImg && thumbCount && thumbSize) {
-    if (n > 0) {
-      thumbBubble.style.display = 'flex';
-      thumbCount.textContent = anyQueued ? `${n} (Saving…)` : `${n} Photo${n > 1 ? 's' : ''}`;
-      thumbSize.textContent = sp.num + ' ' + sp.unit;
-      const lastReady = [...photos].reverse().find(p => p.url);
-      if (lastReady && lastReady.url) {
-        thumbImg.src = lastReady.url;
+  // ── Share button state ──
+  const canShare = anyReady && !anyQueued;
+  $('shareBtn').disabled = !canShare;
+  $('shareBtn').style.opacity = canShare ? '1' : '0.38';
+  $('shareBtn').style.cursor = canShare ? 'pointer' : 'not-allowed';
+  if (canShare) {
+    $('shareBtn').classList.add('neon-btn');
+  } else {
+    $('shareBtn').classList.remove('neon-btn');
+    $('shareBtn').style.transform = 'scale(1)';
+  }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Single implementation — fmtSz calls fmtSzParts (deduplication)
+function fmtSzParts(b) {
+  if (!b || b <= 0) return { num: '0', unit: 'B' };
+  const u = ['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(b) / Math.log(1024)), u.length - 1);
+  return { num: parseFloat((b / Math.pow(1024, i)).toFixed(1)).toString(), unit: u[i] };
+}
+
+function fmtSz(b) {
+  const p = fmtSzParts(b);
+  return p.num + ' ' + p.unit;
+}
+
+// ── ZIP Helpers ────────────────────────────────────────────────────────────
+async function makeZip() {
+  const z = new JSZip();
+  const f = z.folder(folderName);
+  const usedNames = new Set();
+  photos.forEach((p, idx) => {
+    if (p.status === 'ok' && p.comp) {
+      let fileName = p.name || `photo_${idx + 1}.jpg`;
+      let finalName = fileName;
+      let counter = 1;
+      const dot = fileName.lastIndexOf('.');
+      const base = dot > -1 ? fileName.slice(0, dot) : fileName;
+      const ext = dot > -1 ? fileName.slice(dot) : '.jpg';
+      while (usedNames.has(finalName)) {
+        finalName = `${base}_${counter}${ext}`;
+        counter++;
       }
-    } else {
-      thumbBubble.style.display = 'none';
+      usedNames.add(finalName);
+      f.file(finalName, p.comp);
     }
-  }
-
-  const saveBtn = $('saveZipBtn');
-  if (saveBtn) {
-    const canSave = anyReady && !anyQueued;
-    saveBtn.disabled = !canSave;
-    saveBtn.style.opacity = canSave ? '1' : '0.4';
-    saveBtn.style.cursor = canSave ? 'pointer' : 'not-allowed';
-  }
-}
-
-// ── Compression Queue ──────────────────────────────────────────────────────
-function safeDrawImage(img, ctx, w, h) {
-  const srcPixels = img.naturalWidth * img.naturalHeight;
-  if (srcPixels > MAX_PIXELS) {
-    const scale = Math.sqrt(MAX_PIXELS / srcPixels);
-    const iw    = Math.round(img.naturalWidth  * scale);
-    const ih    = Math.round(img.naturalHeight * scale);
-    const tmp   = document.createElement('canvas');
-    tmp.width = iw; tmp.height = ih;
-    tmp.getContext('2d').drawImage(img, 0, 0, iw, ih);
-    ctx.drawImage(tmp, 0, 0, w, h);
-    tmp.width = tmp.height = 0;
-  } else {
-    ctx.drawImage(img, 0, 0, w, h);
-  }
-}
-
-function compress(p) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onerror = () => { p.status = 'err'; render(); resolve(); };
-    reader.onload  = () => {
-      const img = new Image();
-      img.onerror = () => { p.status = 'err'; render(); resolve(); };
-      img.onload  = () => {
-        let w = img.naturalWidth, h = img.naturalHeight;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * (MAX / w)); w = MAX; }
-          else       { w = Math.round(w * (MAX / h)); h = MAX; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        safeDrawImage(img, canvas.getContext('2d'), w, h);
-        canvas.toBlob(blob => {
-          canvas.width = canvas.height = 0;
-          if (!blob) { p.status = 'err'; render(); resolve(); return; }
-          // Convert blob → data URL string for reliable cross-browser IDB storage
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const dataUrl = reader.result;
-            p.dataUrl = dataUrl;
-            p.comp    = dataUrl;   // string — used for ZIP conversion
-            p.compSz  = blob.size;
-            p.url     = dataUrl;   // data URL works directly as img.src
-            p.status  = 'ok';
-            p.blob    = null;
-            await dbSave(p);       // blocks until IDB write completes
-            render();
-            resolve();
-          };
-          reader.onerror = () => { p.status = 'err'; render(); resolve(); };
-          reader.readAsDataURL(blob);
-        }, 'image/jpeg', Q);
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(p.blob);
   });
+  return z.generateAsync({ type: 'blob' });
 }
 
-async function runQueue() {
-  if (busy || !queue.length) return;
-  busy = true;
-  const p = queue.shift();
-  try { await compress(p); } catch (e) { p.status = 'err'; console.error('compress', e); }
-  busy = false;
-  if (!queue.length && $('lock-banner')) $('lock-banner').classList.remove('show');
-  runQueue();
-}
-
-
-
-// ── Shutter Sound & Audio Unlock ───────────────────────────────────────────
-let audioUnlocked = false;
-
-function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  const a = $('shutter-audio');
-  if (a) {
-    a.volume = 1.0;
-    // Play & immediately pause to unlock mobile browser audio pipeline
-    a.play().then(() => {
-      a.pause();
-      a.currentTime = 0;
-    }).catch(() => {});
-  }
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext && !audioCtx) audioCtx = new AudioContext();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  } catch(e) {}
-}
-
-document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
-document.addEventListener('click', unlockAudio, { once: true, passive: true });
-
-function playShutterSound() {
-  // Method 1: HTML5 Audio element (Primary)
-  const a = $('shutter-audio');
-  if (a) {
-    a.currentTime = 0;
-    a.volume = 1.0;
-    const p = a.play();
-    if (p && p.catch) {
-      p.catch(() => playWebAudioFallback());
-    }
-  } else {
-    playWebAudioFallback();
-  }
-}
-
-function playWebAudioFallback() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    if (!audioCtx) audioCtx = new AudioContext();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(1000, t);
-    osc.frequency.exponentialRampToValueAtTime(100, t + 0.06);
-    gain.gain.setValueAtTime(0.5, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.06);
-  } catch (e) {}
-}
-
-// ── Camera (V2) ────────────────────────────────────────────────────────────
-async function toggleCamera() {
-  currentFacingMode = (currentFacingMode === 'environment' ? 'user' : 'environment');
-  const btn = $('flipCamBtn');
-  if (btn) btn.style.transform = 'rotate(180deg)';
-  setTimeout(() => { if (btn) btn.style.transform = 'none'; }, 250);
-  await startCamera();
-}
-window.toggleCamera = toggleCamera;
-
-
-// Handle camera stream dimensions & orientation adaptively
-function adaptViewfinderOrientation() {
-  const video = $('viewfinder');
-  if (!video || !video.videoWidth || !video.videoHeight) return;
-  const isLandscape = window.innerWidth > window.innerHeight;
-  const streamLandscape = video.videoWidth > video.videoHeight;
-  if (isLandscape || streamLandscape) {
-    video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
-  } else {
-    video.style.aspectRatio = '3 / 4';
-  }
-}
-window.addEventListener('resize', adaptViewfinderOrientation);
-window.addEventListener('orientationchange', () => setTimeout(adaptViewfinderOrientation, 150));
-
-async function startCamera() {
-  const video = $('viewfinder');
-  if (!video) return;
-  try {
-    if (videoStream) {
-      videoStream.getTracks().forEach(t => t.stop());
-    }
-    const constraints = {
-      video: {
-        facingMode: currentFacingMode,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
-      audio: false
-    };
-    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = videoStream;
-    await video.play().catch(e => console.warn('video play error', e));
-    video.onloadedmetadata = adaptViewfinderOrientation;
-  } catch (err) {
-    console.error('Camera access denied or error:', err);
-    toast('Camera access required for live viewfinder', 'err');
-  }
-}
-
-function takePhoto() {
-  playShutterSound();
-  if (navigator.vibrate) {
-    try { navigator.vibrate(40); } catch(e) {}
-  }
-  const video = $('viewfinder');
-  const canvas = $('capture-canvas');
-  if (!video || !canvas) return;
-  if (!videoStream || video.videoWidth === 0) {
-    toast('Camera not ready yet', 'err');
-    return;
-  }
-
-  // Flash feedback
-  video.style.opacity = '0.2';
-  setTimeout(() => video.style.opacity = '1', 100);
-
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-  canvas.width = w;
-  canvas.height = h;
-
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, w, h);
-
-  canvas.toBlob(blob => {
-    canvas.width = canvas.height = 0; // Immediately release GPU memory buffer
-    if (!blob) { toast('Capture failed', 'err'); return; }
-
-    const existingNames = new Set(photos.map(p => p.name));
-    let base = 'photo';
-    let n = base + '.jpg';
-    let counter = 1;
-    while (existingNames.has(n)) {
-      n = `${base}_${counter}.jpg`;
-      counter++;
-    }
-
-    const p = {
-      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      name:   n,
-      origSz: blob.size,
-      compSz: 0,
-      blob:   blob,
-      comp:   null,
-      url:    '',
-      status: 'q'
-    };
-    photos.push(p);
-    queue.push(p);
-    render();
-    runQueue();
-  }, 'image/jpeg', 0.95);
-}
-
-// ── Gallery Selection Handler ──────────────────────────────────────────────
-function handleFiles(e) {
-  const files = [...e.target.files];
-  e.target.value = ''; // allow re-selecting same files
-  if (!files.length) return;
-
-  const existingNames = new Set(photos.map(p => p.name));
-
-  files.forEach(f => {
-    if (!f.type.startsWith('image/')) return;
-    let raw = f.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const dot = raw.lastIndexOf('.');
-    let base = (dot > -1 ? raw.slice(0, dot) : raw);
-
-    let n = base + '.jpg';
-    let counter = 1;
-    while (existingNames.has(n)) {
-      n = `${base}_${counter}.jpg`;
-      counter++;
-    }
-    existingNames.add(n);
-
-    const p = {
-      id:     'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      name:   n,
-      origSz: f.size,
-      compSz: 0,
-      blob:   f,
-      comp:   null,
-      url:    '',
-      status: 'q'
-    };
-    photos.push(p);
-    queue.push(p);
-  });
-
-  render();
-  runQueue();
-}
-window.handleFiles = handleFiles;
-
-// ── Export & ZIP ───────────────────────────────────────────────────────────
 function triggerDownload(blob, filename) {
   const u = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1092,225 +908,156 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(u), 30_000);
 }
 
-async function makeZip(triggerDownloadFlag = false) {
+// ── Save & Email (Unified Flow) ────────────────────────────────────────────
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+async function saveAndEmailFlow() {
   const readyPhotos = photos.filter(p => p.status === 'ok' && p.comp);
-  if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return null; }
+  if (!readyPhotos.length) { toast('No compressed photos ready yet', 'err'); return; }
 
   toast('Preparing ZIP…');
-  const z = new JSZip();
-  const f = z.folder(folderName);
-  const usedNames = new Set();
-  for (let idx = 0; idx < readyPhotos.length; idx++) {
-    const p = readyPhotos[idx];
-    let fileName = p.name || `photo_${idx + 1}.jpg`;
-    let finalName = fileName;
-    let counter = 1;
-    const dot = fileName.lastIndexOf('.');
-    const base = dot > -1 ? fileName.slice(0, dot) : fileName;
-    const ext = dot > -1 ? fileName.slice(dot) : '.jpg';
-    while (usedNames.has(finalName)) {
-      finalName = `${base}_${counter}${ext}`;
-      counter++;
-    }
-    usedNames.add(finalName);
-    // p.comp is a data URL string; fetch() converts it to a Blob for JSZip
-    const blob = await (await fetch(p.comp)).blob();
-    f.file(finalName, blob);
-  }
-
-  const zipBlob = await z.generateAsync({ type: 'blob' });
+  const zipBlob = await makeZip();
   const zipFileName = folderName + '.zip';
 
-  if (triggerDownloadFlag) {
-    triggerDownload(zipBlob, zipFileName);
-    toast('✅ ZIP saved to device!', 'ok');
-  }
+  // Step 1: Show modal with Download button (ensures a fresh user gesture for the download)
+  const attachFolder = isIOS ? 'Recents or Downloads' : 'Downloads';
 
-  return zipBlob;
-}
+  showDialog({
+    title: '📧 Save & Email',
+    msg: 'Your ZIP file <b>' + esc(zipFileName) + '</b> is ready.<br><br>' +
+         'Tap <b>Download & Continue</b> to save the ZIP to your device, then open your email app.',
+    okText: 'Download & Continue',
+    cancelText: 'Cancel',
+    onOk: () => {
+      // Step 2: Trigger download from the fresh user tap
+      triggerDownload(zipBlob, zipFileName);
+      toast('✅ ZIP saved!', 'ok');
 
-window.makeZip = makeZip;
-window.takePhoto = takePhoto;
+      // Step 3: After a brief moment for the download to start, show the email prompt
+      setTimeout(() => {
+        const mailToUrl =
+          'mailto:?subject=' + encodeURIComponent('Photos: ' + folderName) +
+          '&body=' + encodeURIComponent('Here are the latest pictures you took, sent via Perfiklose.');
 
-// ── Delete / Clear ─────────────────────────────────────────────────────────
-window.del = id => {
-  const i = photos.findIndex(p => p.id === id);
-  if (i > -1) {
-    // Only revoke blob: URLs, not data: URLs
-    if (photos[i].url && photos[i].url.startsWith('blob:')) URL.revokeObjectURL(photos[i].url);
-    photos.splice(i, 1);
-    dbDelete(id);
-    render();
-  }
-};
+        waitingForEmailReturn = true;
 
-window.clearAll = () => {
-  photos.forEach(p => { if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url); });
-  photos = []; queue = []; busy = false;
-  if ($('stale-banner')) $('stale-banner').classList.remove('show');
-  dbClear();
-  newFolder();
-  render();
-  toast('Tray reset for next batch');
-};
-
-
-// ── Review Drawer Controls ────────────────────────────────────────────────
-function openReviewDrawer() {
-  const m = $('review-modal');
-  if (m) m.classList.add('show');
-}
-window.openReviewDrawer = openReviewDrawer;
-
-function closeReviewDrawer() {
-  const m = $('review-modal');
-  if (m) m.classList.remove('show');
-}
-window.closeReviewDrawer = closeReviewDrawer;
-
-// ── Settings & Presets ─────────────────────────────────────────────────────
-function setPreset(key) {
-  if (!PRESETS[key]) key = 'good';
-  currentPreset = key;
-  MAX = PRESETS[key].max;
-  Q   = PRESETS[key].q;
-  localStorage.setItem('perfiKlose_preset', currentPreset);
-  localStorage.setItem('perfiKlose_max', MAX);
-  localStorage.setItem('perfiKlose_q', Q);
-  updatePresetUI();
-  toast(`Quality set to ${PRESETS[key].label}`);
-}
-window.setPreset = setPreset;
-
-function updatePresetUI() {
-  const p = PRESETS[currentPreset] || PRESETS.good;
-  const descEl = $('preset-desc');
-  if (descEl) descEl.textContent = p.desc;
-
-  ['good', 'better', 'best'].forEach(k => {
-    const btn = $('preset-' + k);
-    if (!btn) return;
-    if (k === currentPreset) {
-      btn.style.background = '#0058bc';
-      btn.style.color = '#fff';
-      btn.style.boxShadow = '0 2px 10px rgba(0,88,188,.5)';
-    } else {
-      btn.style.background = 'transparent';
-      btn.style.color = 'rgba(255,255,255,.7)';
-      btn.style.boxShadow = 'none';
+        showDialog({
+          title: '📎 Attach Your ZIP',
+          msg: 'Your file <b>' + esc(zipFileName) + '</b> is saved to your phone.<br><br>' +
+               'Your email app will open next. Tap the 📎 paperclip icon and select your ZIP from the <b>' + attachFolder + '</b> folder.',
+          okText: 'Open Email App',
+          cancelText: 'Skip Email',
+          onOk: () => {
+            window.location.href = mailToUrl;
+          }
+        });
+      }, 600);
     }
   });
 }
 
-function showSettings() {
-  updatePresetUI();
-  if ($('settings-modal')) $('settings-modal').classList.add('show');
+function promptClear() {
+  showDialog({
+    title: 'Batch Prepared!',
+    msg: 'Would you like to clear the tray and start a new batch?',
+    okText: 'Clear Tray',
+    cancelText: 'Keep Photos',
+    onOk: () => clearAll()
+  });
 }
-window.showSettings = showSettings;
+
+// ── Custom Dialog Helpers ──────────────────────────────────────────────────
+function showDialog({ title, msg, okText = 'OK', cancelText = null, onOk, onCancel }) {
+  $('dialog-title').textContent = title || 'PerfiKlose';
+  $('dialog-msg').innerHTML = msg.replace(/\n/g, '<br>');
+
+  const okBtn = $('dialog-ok');
+  okBtn.textContent = okText;
+  okBtn.onclick = () => {
+    closeDialog();
+    if (onOk) onOk();
+  };
+
+  const cancelBtn = $('dialog-cancel');
+  if (cancelText) {
+    cancelBtn.style.display = 'inline-flex';
+    cancelBtn.textContent = cancelText;
+    cancelBtn.onclick = () => {
+      closeDialog();
+      if (onCancel) onCancel();
+    };
+  } else {
+    cancelBtn.style.display = 'none';
+  }
+
+  $('dialog-modal').classList.add('show');
+}
+
+function closeDialog() {
+  $('dialog-modal').classList.remove('show');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function showSettings() {
+  $('q-slider').value = Q;
+  $('q-val').textContent = Math.round(Q * 100) + '%';
+  $('max-slider').value = MAX;
+  $('max-val').textContent = MAX + 'px';
+  $('settings-modal').classList.add('show');
+}
 
 function closeSettings() {
-  if ($('settings-modal')) $('settings-modal').classList.remove('show');
-}
-window.closeSettings = closeSettings;
-
-// ── Glow Orb ───────────────────────────────────────────────────────────────
-{
-  let _rafPending = false;
-  let _ex = 0, _ey = 0;
-  window.addEventListener('mousemove', e => {
-    _ex = e.pageX; _ey = e.pageY;
-    if (_rafPending) return;
-    _rafPending = true;
-    requestAnimationFrame(() => {
-      const orb = $('glow-orb');
-      if (orb) {
-        const x = (window.innerWidth  / 2 - _ex) / 28;
-        const y = (window.innerHeight / 2 - _ey) / 28;
-        orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
-      }
-      _rafPending = false;
-    });
-  }, { passive: true });
+  $('settings-modal').classList.remove('show');
 }
 
-// ── Page Visibility ────────────────────────────────────────────────────────
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if ((queue.length > 0 || busy) && $('lock-banner')) $('lock-banner').classList.add('show');
-  } else {
-    if ($('lock-banner')) $('lock-banner').classList.remove('show');
-    if (!busy && queue.length > 0) runQueue();
-    // Verify camera feed is alive after backgrounding
-    const video = $('viewfinder');
-    if (video && (!videoStream || !videoStream.active || video.paused)) {
-      startCamera();
-    }
-  }
-});
+$('q-slider').oninput = e => {
+  Q = parseFloat(e.target.value);
+  const pct = Math.round(Q * 100) + '%';
+  $('q-val').textContent = pct;
+  $('hero-quality').textContent = pct;
+  localStorage.setItem('perfiKlose_q', Q);
+};
 
-// ── PWA Update ─────────────────────────────────────────────────────────────
+$('max-slider').oninput = e => {
+  MAX = parseInt(e.target.value, 10);
+  $('max-val').textContent = MAX + 'px';
+  localStorage.setItem('perfiKlose_max', MAX);
+};
+
+// ── PWA Update (Fix #6) ────────────────────────────────────────────────────
 function applyUpdate() {
   if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
   else window.location.reload();
 }
-window.applyUpdate = applyUpdate;
-
-// ── App Startup ────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
-  if ($('hero-quality')) $('hero-quality').textContent = Math.round(Q * 100) + '%';
-  folderName = localStorage.getItem('perfiKlose_folderName');
-  if (!folderName) newFolder();
-  if (folderName && !localStorage.getItem('perfiKlose_savedAt')) {
-    localStorage.setItem('perfiKlose_savedAt', Date.now());
-  }
-
-  // Load IndexedDB items
-  const list = await dbLoadAll();
-  photos = list;
-  render();
-
-  if (list.length > 0) {
-    const savedAt = parseInt(localStorage.getItem('perfiKlose_savedAt') || '0', 10);
-    const daysOld = savedAt ? (Date.now() - savedAt) / 86_400_000 : 0;
-    if (daysOld >= STALE_DAYS && $('stale-banner')) {
-      const d = Math.floor(daysOld), n = list.length;
-      $('stale-msg').textContent = `You have ${n} unsent photo${n > 1 ? 's' : ''} from ${d} day${d > 1 ? 's' : ''} ago — share or clear them soon.`;
-      $('stale-banner').classList.add('show');
-    }
-  }
-
-  // Start in-app camera
-  startCamera();
-});
-
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       swReg = reg;
-      if (reg.waiting && $('update-banner')) $('update-banner').classList.add('show');
+      if (reg.waiting) $('update-banner').classList.add('show');
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller && $('update-banner')) {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
             swReg = reg;
             $('update-banner').classList.add('show');
           }
         });
       });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
     }).catch(err => console.error('SW failed', err));
   });
 }
-
-// ── Orientation / Landscape Handler ─────────────────────────────────────────
-function applyOrientation() {
-  const isLandscape = window.innerWidth > window.innerHeight;
-  document.body.classList.toggle('landscape', isLandscape);
-}
-window.addEventListener('resize', applyOrientation);
-window.addEventListener('orientationchange', () => setTimeout(applyOrientation, 100));
-// Run on load
-applyOrientation();
 </script>
 </body>
 </html>
