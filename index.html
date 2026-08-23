@@ -597,7 +597,8 @@ function toast(msg, type) {
 }
 
 
-// ── IndexedDB Storage Engine (Rock-Solid Persistence) ─────────────────────
+// ── IndexedDB Storage Engine ───────────────────────────────────────────────
+// Blobs stored as ArrayBuffer for cross-browser reliability (fixes iOS Safari).
 const DB_NAME = 'PerfiKloseDB';
 const STORE   = 'photos';
 const DB_VER  = 2;
@@ -620,9 +621,11 @@ function getDB() {
   return _dbPromise;
 }
 
+// Convert Blob → ArrayBuffer before saving (works on all browsers including iOS Safari)
 async function dbSave(p) {
   try {
     const db = await getDB();
+    const buf = p.comp ? await p.comp.arrayBuffer() : null;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put({
@@ -630,14 +633,14 @@ async function dbSave(p) {
         name:   p.name,
         origSz: p.origSz,
         compSz: p.compSz,
-        comp:   p.comp,
+        comp:   buf,           // stored as ArrayBuffer
         status: p.status
       });
       tx.oncomplete = () => resolve();
       tx.onerror    = () => reject(tx.error);
     });
   } catch (e) {
-    console.error('Failed to save photo to IndexedDB:', e);
+    console.error('dbSave failed:', e);
   }
 }
 
@@ -651,7 +654,7 @@ async function dbDelete(id) {
       tx.onerror    = () => reject(tx.error);
     });
   } catch (e) {
-    console.error('Failed to delete photo from IndexedDB:', e);
+    console.error('dbDelete failed:', e);
   }
 }
 
@@ -666,13 +669,14 @@ async function dbClear() {
         localStorage.removeItem('perfiKlose_savedAt');
         resolve();
       };
-      tx.onerror    = () => reject(tx.error);
+      tx.onerror = () => reject(tx.error);
     });
   } catch (e) {
-    console.error('Failed to clear IndexedDB:', e);
+    console.error('dbClear failed:', e);
   }
 }
 
+// Convert ArrayBuffer → Blob when loading back
 async function dbLoadAll() {
   try {
     const db = await getDB();
@@ -682,22 +686,24 @@ async function dbLoadAll() {
       req.onsuccess = () => {
         const results = req.result || [];
         const loaded = results.map(p => {
-          let url = '';
-          if (p.comp && p.comp instanceof Blob) {
-            url = URL.createObjectURL(p.comp);
+          let comp = null;
+          let url  = '';
+          if (p.comp) {
+            // p.comp is either ArrayBuffer (new format) or Blob (legacy)
+            const raw = p.comp;
+            comp = (raw instanceof Blob)
+              ? raw
+              : new Blob([raw], { type: 'image/jpeg' });
+            url = URL.createObjectURL(comp);
           }
-          return {
-            ...p,
-            blob: null,
-            url: url
-          };
+          return { ...p, comp, blob: null, url };
         });
         resolve(loaded);
       };
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    console.error('Failed to load photos from IndexedDB:', e);
+    console.error('dbLoadAll failed:', e);
     return [];
   }
 }
@@ -843,7 +849,7 @@ function compress(p) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         safeDrawImage(img, canvas.getContext('2d'), w, h);
-        canvas.toBlob(blob => {
+        canvas.toBlob(async blob => {
           canvas.width = canvas.height = 0;
           if (!blob) { p.status = 'err'; render(); resolve(); return; }
           p.comp   = blob;
@@ -851,7 +857,7 @@ function compress(p) {
           p.url    = URL.createObjectURL(blob);
           p.status = 'ok';
           p.blob   = null;
-          dbSave(p);
+          await dbSave(p);   // ← must complete before resolving
           render();
           resolve();
         }, 'image/jpeg', Q);

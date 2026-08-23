@@ -1,5 +1,5 @@
 // PerfiKlose Service Worker v48
-const CACHE_NAME = 'perfik-v48';
+const CACHE_NAME = 'perfik-v49';
 const ASSETS = [
   './',
   'index.html',
