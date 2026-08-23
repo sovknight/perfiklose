@@ -597,11 +597,12 @@ function toast(msg, type) {
 }
 
 
-// ── IndexedDB Storage Engine ───────────────────────────────────────────────
-// Blobs stored as ArrayBuffer for cross-browser reliability (fixes iOS Safari).
+// ── IndexedDB ──────────────────────────────────────────────────────────────
+// photos are stored as data-URL strings — the only format that works
+// reliably on every browser (iOS Safari, Android Chrome, desktop).
 const DB_NAME = 'PerfiKloseDB';
 const STORE   = 'photos';
-const DB_VER  = 2;
+const DB_VER  = 3;             // bumped → wipes old corrupted records
 let _dbPromise = null;
 
 function getDB() {
@@ -610,38 +611,34 @@ function getDB() {
     const r = indexedDB.open(DB_NAME, DB_VER);
     r.onupgradeneeded = e => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'id' });
-      }
+      if (db.objectStoreNames.contains(STORE)) db.deleteObjectStore(STORE);
+      db.createObjectStore(STORE, { keyPath: 'id' });
     };
     r.onsuccess = e => resolve(e.target.result);
     r.onerror   = e => { _dbPromise = null; reject(e.target.error); };
-    r.onblocked = () => console.warn('IndexedDB blocked');
+    r.onblocked = () => console.warn('IDB blocked');
   });
   return _dbPromise;
 }
 
-// Convert Blob → ArrayBuffer before saving (works on all browsers including iOS Safari)
 async function dbSave(p) {
   try {
     const db = await getDB();
-    const buf = p.comp ? await p.comp.arrayBuffer() : null;
     return new Promise((resolve, reject) => {
+      const record = {
+        id:      p.id,
+        name:    p.name,
+        origSz:  p.origSz,
+        compSz:  p.compSz,
+        dataUrl: p.dataUrl,   // plain string — always survives IDB
+        status:  p.status
+      };
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({
-        id:     p.id,
-        name:   p.name,
-        origSz: p.origSz,
-        compSz: p.compSz,
-        comp:   buf,           // stored as ArrayBuffer
-        status: p.status
-      });
+      tx.objectStore(STORE).put(record);
       tx.oncomplete = () => resolve();
       tx.onerror    = () => reject(tx.error);
     });
-  } catch (e) {
-    console.error('dbSave failed:', e);
-  }
+  } catch (e) { console.error('dbSave', e); }
 }
 
 async function dbDelete(id) {
@@ -653,9 +650,7 @@ async function dbDelete(id) {
       tx.oncomplete = () => resolve();
       tx.onerror    = () => reject(tx.error);
     });
-  } catch (e) {
-    console.error('dbDelete failed:', e);
-  }
+  } catch (e) { console.error('dbDelete', e); }
 }
 
 async function dbClear() {
@@ -671,12 +666,9 @@ async function dbClear() {
       };
       tx.onerror = () => reject(tx.error);
     });
-  } catch (e) {
-    console.error('dbClear failed:', e);
-  }
+  } catch (e) { console.error('dbClear', e); }
 }
 
-// Convert ArrayBuffer → Blob when loading back
 async function dbLoadAll() {
   try {
     const db = await getDB();
@@ -684,28 +676,18 @@ async function dbLoadAll() {
       const tx  = db.transaction(STORE, 'readonly');
       const req = tx.objectStore(STORE).getAll();
       req.onsuccess = () => {
-        const results = req.result || [];
-        const loaded = results.map(p => {
-          let comp = null;
-          let url  = '';
-          if (p.comp) {
-            // p.comp is either ArrayBuffer (new format) or Blob (legacy)
-            const raw = p.comp;
-            comp = (raw instanceof Blob)
-              ? raw
-              : new Blob([raw], { type: 'image/jpeg' });
-            url = URL.createObjectURL(comp);
-          }
-          return { ...p, comp, blob: null, url };
-        });
+        const loaded = (req.result || []).map(p => ({
+          ...p,
+          // dataUrl is used as both the image src and the zip source
+          comp: p.dataUrl || null,
+          url:  p.dataUrl || '',
+          blob: null
+        }));
         resolve(loaded);
       };
       req.onerror = () => reject(req.error);
     });
-  } catch (e) {
-    console.error('dbLoadAll failed:', e);
-    return [];
-  }
+  } catch (e) { console.error('dbLoadAll', e); return []; }
 }
 
 // ── Folder Naming ──────────────────────────────────────────────────────────
@@ -849,17 +831,25 @@ function compress(p) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         safeDrawImage(img, canvas.getContext('2d'), w, h);
-        canvas.toBlob(async blob => {
+        canvas.toBlob(blob => {
           canvas.width = canvas.height = 0;
           if (!blob) { p.status = 'err'; render(); resolve(); return; }
-          p.comp   = blob;
-          p.compSz = blob.size;
-          p.url    = URL.createObjectURL(blob);
-          p.status = 'ok';
-          p.blob   = null;
-          await dbSave(p);   // ← must complete before resolving
-          render();
-          resolve();
+          // Convert blob → data URL string for reliable cross-browser IDB storage
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const dataUrl = reader.result;
+            p.dataUrl = dataUrl;
+            p.comp    = dataUrl;   // string — used for ZIP conversion
+            p.compSz  = blob.size;
+            p.url     = dataUrl;   // data URL works directly as img.src
+            p.status  = 'ok';
+            p.blob    = null;
+            await dbSave(p);       // blocks until IDB write completes
+            render();
+            resolve();
+          };
+          reader.onerror = () => { p.status = 'err'; render(); resolve(); };
+          reader.readAsDataURL(blob);
         }, 'image/jpeg', Q);
       };
       img.src = reader.result;
@@ -1110,7 +1100,8 @@ async function makeZip(triggerDownloadFlag = false) {
   const z = new JSZip();
   const f = z.folder(folderName);
   const usedNames = new Set();
-  readyPhotos.forEach((p, idx) => {
+  for (let idx = 0; idx < readyPhotos.length; idx++) {
+    const p = readyPhotos[idx];
     let fileName = p.name || `photo_${idx + 1}.jpg`;
     let finalName = fileName;
     let counter = 1;
@@ -1122,8 +1113,10 @@ async function makeZip(triggerDownloadFlag = false) {
       counter++;
     }
     usedNames.add(finalName);
-    f.file(finalName, p.comp);
-  });
+    // p.comp is a data URL string; fetch() converts it to a Blob for JSZip
+    const blob = await (await fetch(p.comp)).blob();
+    f.file(finalName, blob);
+  }
 
   const zipBlob = await z.generateAsync({ type: 'blob' });
   const zipFileName = folderName + '.zip';
@@ -1143,7 +1136,8 @@ window.takePhoto = takePhoto;
 window.del = id => {
   const i = photos.findIndex(p => p.id === id);
   if (i > -1) {
-    if (photos[i].url) URL.revokeObjectURL(photos[i].url);
+    // Only revoke blob: URLs, not data: URLs
+    if (photos[i].url && photos[i].url.startsWith('blob:')) URL.revokeObjectURL(photos[i].url);
     photos.splice(i, 1);
     dbDelete(id);
     render();
@@ -1151,7 +1145,7 @@ window.del = id => {
 };
 
 window.clearAll = () => {
-  photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
+  photos.forEach(p => { if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url); });
   photos = []; queue = []; busy = false;
   if ($('stale-banner')) $('stale-banner').classList.remove('show');
   dbClear();
