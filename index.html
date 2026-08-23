@@ -46,10 +46,7 @@ body {
 /* ── Keyframes ────────────────────────────────────────────────────────── */
 @keyframes pop        { from { transform:scale(.9);  opacity:0 } to { transform:scale(1); opacity:1 } }
 @keyframes sp         { to   { transform:rotate(360deg) } }
-@keyframes spin-cw    { to   { transform:rotate(360deg)  } }
-@keyframes spin-ccw   { to   { transform:rotate(-360deg) } }
-@keyframes pulse-ring { 0%,100%{box-shadow:0 0 20px rgba(0,88,188,.4)} 50%{box-shadow:0 0 50px rgba(0,88,188,.9)} }
-@keyframes float-up   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
 
 /* ── Material Symbols filled variant ─────────────────────────────────── */
 .filled { font-variation-settings: 'FILL' 1; }
@@ -99,11 +96,7 @@ body {
 .neon-btn:active { transform: scale(.96); box-shadow: 0 0 14px rgba(255,255,255,.2); }
 
 /* ── Spinning Dashed Rings ────────────────────────────────────────────── */
-.ring-cw  { animation: spin-cw  14s linear infinite; }
-.ring-ccw { animation: spin-ccw 20s linear infinite; }
 
-/* ── Camera icon float ────────────────────────────────────────────────── */
-.float-anim { animation: float-up 3.5s ease-in-out infinite; }
 
 /* ── Photo Grid ───────────────────────────────────────────────────────── */
 #grid {
@@ -796,6 +789,7 @@ function takePhoto() {
   ctx.drawImage(video, 0, 0, w, h);
 
   canvas.toBlob(blob => {
+    canvas.width = canvas.height = 0; // Immediately release GPU memory buffer
     if (!blob) { toast('Capture failed', 'err'); return; }
 
     const existingNames = new Set(photos.map(p => p.name));
@@ -1022,6 +1016,11 @@ document.addEventListener('visibilitychange', () => {
   } else {
     if ($('lock-banner')) $('lock-banner').classList.remove('show');
     if (!busy && queue.length > 0) runQueue();
+    // Verify camera feed is alive after backgrounding
+    const video = $('viewfinder');
+    if (video && (!videoStream || !videoStream.active || video.paused)) {
+      startCamera();
+    }
   }
 });
 

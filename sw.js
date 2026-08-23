@@ -1,6 +1,7 @@
-// Fix #6: Bump version string on every deployment to force cache refresh
-const CACHE_NAME = 'perfik-v41';
+// PerfiKlose Service Worker (Optimized v42)
+const CACHE_NAME = 'perfik-v42';
 const ASSETS = [
+  './',
   'index.html',
   'manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
@@ -8,13 +9,13 @@ const ASSETS = [
 
 // Pre-cache all assets on install
 self.addEventListener('install', (e) => {
+  self.skipWaiting(); // Auto-activate for seamless background updates
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-    // Do NOT call skipWaiting here — let the app's update banner handle it
   );
 });
 
-// Fix #6: Listen for SKIP_WAITING message from the update banner
+// Fix #6: Listen for SKIP_WAITING message
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -38,7 +39,6 @@ self.addEventListener('fetch', (e) => {
     caches.match(e.request).then((cached) => {
       if (cached) return cached;
       return fetch(e.request).catch(() => {
-        // Offline fallback: serve index.html for navigation requests
         if (e.request.mode === 'navigate') return caches.match('index.html');
       });
     })
