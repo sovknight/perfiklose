@@ -30,6 +30,37 @@
 </style>
 
 <style>
+
+/* ── Landscape & Responsive Viewfinder ────────────────────────────────── */
+#viewfinder-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#viewfinder {
+  width: 100%;
+  border-radius: 16px;
+  background: #111;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+@media (orientation: landscape) {
+  main {
+    padding-top: 56px !important;
+    padding-bottom: 120px !important;
+    max-width: 52rem !important;
+  }
+  #viewfinder {
+    aspect-ratio: 16/9;
+    max-height: calc(100vh - 165px);
+    width: auto;
+    max-width: 100%;
+  }
+}
+
 /* ── Reset & Base ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root { --safe: env(safe-area-inset-bottom, 0px); }
@@ -234,8 +265,8 @@ body {
   
   <!-- ── In-App Camera Viewfinder ── -->
   <section class="hero-card overflow-hidden relative" style="border-radius:20px;padding:.5rem;display:flex;flex-direction:column;align-items:center;background:#000;">
-    <div style="position:relative;width:100%;">
-      <video id="viewfinder" autoplay playsinline style="width:100%;border-radius:16px;background:#111;aspect-ratio:3/4;object-fit:cover;display:block;"></video>
+    <div id="viewfinder-wrap">
+      <video id="viewfinder" autoplay playsinline></video>
       
       <!-- Floating Recent Thumbnail & Batch Info (Tap to Review) -->
       <div id="cam-thumb-bubble" onclick="openReviewDrawer()" 
@@ -730,6 +761,65 @@ async function runQueue() {
   runQueue();
 }
 
+
+// ── Web Audio Synthesized Camera Shutter Click ─────────────────────────────
+let audioCtx = null;
+
+function playShutterSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const t = audioCtx.currentTime;
+
+    // First click (shutter curtain 1)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(880, t);
+    osc1.frequency.exponentialRampToValueAtTime(140, t + 0.035);
+    gain1.gain.setValueAtTime(0.35, t);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.035);
+
+    // Second click (shutter curtain 2, 45ms later)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(650, t + 0.045);
+    osc2.frequency.exponentialRampToValueAtTime(90, t + 0.085);
+    gain2.gain.setValueAtTime(0.4, t + 0.045);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.085);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(t + 0.045);
+    osc2.stop(t + 0.085);
+
+    // Mechanical snap texture (noise burst)
+    const bufferSize = Math.floor(audioCtx.sampleRate * 0.07);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.25, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.07);
+    noise.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start(t);
+  } catch (e) {
+    console.warn('Audio shutter error', e);
+  }
+}
+
 // ── Camera (V2) ────────────────────────────────────────────────────────────
 async function toggleCamera() {
   currentFacingMode = (currentFacingMode === 'environment' ? 'user' : 'environment');
@@ -739,6 +829,22 @@ async function toggleCamera() {
   await startCamera();
 }
 window.toggleCamera = toggleCamera;
+
+
+// Handle camera stream dimensions & orientation adaptively
+function adaptViewfinderOrientation() {
+  const video = $('viewfinder');
+  if (!video || !video.videoWidth || !video.videoHeight) return;
+  const isLandscape = window.innerWidth > window.innerHeight;
+  const streamLandscape = video.videoWidth > video.videoHeight;
+  if (isLandscape || streamLandscape) {
+    video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  } else {
+    video.style.aspectRatio = '3 / 4';
+  }
+}
+window.addEventListener('resize', adaptViewfinderOrientation);
+window.addEventListener('orientationchange', () => setTimeout(adaptViewfinderOrientation, 150));
 
 async function startCamera() {
   const video = $('viewfinder');
@@ -758,6 +864,7 @@ async function startCamera() {
     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = videoStream;
     await video.play().catch(e => console.warn('video play error', e));
+    video.onloadedmetadata = adaptViewfinderOrientation;
   } catch (err) {
     console.error('Camera access denied or error:', err);
     toast('Camera access required for live viewfinder', 'err');
@@ -765,6 +872,7 @@ async function startCamera() {
 }
 
 function takePhoto() {
+  playShutterSound();
   if (navigator.vibrate) {
     try { navigator.vibrate(40); } catch(e) {}
   }
