@@ -31,7 +31,7 @@
 
 <style>
 
-/* ── Landscape & Responsive Viewfinder ────────────────────────────────── */
+/* ── Viewfinder base styles ────────────────────────────────────────────── */
 #viewfinder-wrap {
   position: relative;
   width: 100%;
@@ -46,19 +46,83 @@
   aspect-ratio: 3/4;
   object-fit: cover;
   display: block;
+  transition: border-radius 0.2s;
 }
-@media (orientation: landscape) {
-  main {
-    padding-top: 56px !important;
-    padding-bottom: 120px !important;
-    max-width: 52rem !important;
-  }
-  #viewfinder {
-    aspect-ratio: 16/9;
-    max-height: calc(100vh - 165px);
-    width: auto;
-    max-width: 100%;
-  }
+
+/* Landscape mode — applied via JS toggling .landscape on <body> */
+body.landscape main {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100vw !important;
+}
+body.landscape main section.hero-card {
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+body.landscape #viewfinder-wrap {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 0 !important;
+}
+body.landscape #viewfinder {
+  width: 100vw !important;
+  height: 100vh !important;
+  aspect-ratio: auto !important;
+  object-fit: cover !important;
+  border-radius: 0 !important;
+}
+body.landscape #dock-bar {
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  width: 112px !important;
+  height: 100vh !important;
+  padding: 16px 10px !important;
+  background: linear-gradient(to left, rgba(0,0,0,.82) 55%, transparent) !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: .8rem !important;
+  align-items: center !important;
+}
+body.landscape #dock-row1 {
+  flex-direction: column !important;
+  gap: .65rem !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+  align-items: center !important;
+}
+body.landscape #dock-row2 {
+  flex-direction: column !important;
+  width: 88px !important;
+  gap: .4rem !important;
+}
+body.landscape #shutterBtn {
+  width: 62px !important;
+  height: 62px !important;
+}
+body.landscape label[for="gal"],
+body.landscape #flipCamBtn {
+  width: 46px !important;
+  height: 46px !important;
+}
+body.landscape #saveZipBtn,
+body.landscape #openEmailBtn {
+  padding: .4rem 0 !important;
+  font-size: .72rem !important;
+  border-radius: 10px !important;
+}
+body.landscape header {
+  display: none !important;
+}
+body.landscape #cam-thumb-bubble {
+  top: 12px !important;
+  left: 12px !important;
+  z-index: 10 !important;
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────────────── */
@@ -301,7 +365,7 @@ body {
             pointer-events:none;">
 
   <!-- Row 1: Shutter Button & Gallery Picker -->
-  <div style="display:flex;justify-content:center;align-items:center;gap:1.25rem;width:100%;margin-bottom:.5rem;">
+  <div id="dock-row1" style="display:flex;justify-content:center;align-items:center;gap:1.25rem;width:100%;margin-bottom:.5rem;">
     <!-- Gallery Picker Button -->
     <label for="gal" class="glass-card"
            style="pointer-events:auto;display:flex;align-items:center;justify-content:center;
@@ -347,7 +411,7 @@ body {
   </div>
 
   <!-- Row 2: Export Dock -->
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;width:100%;max-width:320px;">
+  <div id="dock-row2" style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;width:100%;max-width:320px;">
     <button id="saveZipBtn" onclick="makeZip(true)" class="neon-btn"
             style="pointer-events:auto;display:flex;align-items:center;justify-content:center;flex:1;
                    padding:.75rem 0;border-radius:999px;
@@ -1237,6 +1301,16 @@ if ('serviceWorker' in navigator) {
     }).catch(err => console.error('SW failed', err));
   });
 }
+
+// ── Orientation / Landscape Handler ─────────────────────────────────────────
+function applyOrientation() {
+  const isLandscape = window.innerWidth > window.innerHeight;
+  document.body.classList.toggle('landscape', isLandscape);
+}
+window.addEventListener('resize', applyOrientation);
+window.addEventListener('orientationchange', () => setTimeout(applyOrientation, 100));
+// Run on load
+applyOrientation();
 </script>
 </body>
 </html>
